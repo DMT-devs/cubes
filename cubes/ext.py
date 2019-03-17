@@ -41,6 +41,7 @@ _BUILTIN_EXTENSIONS = {
     },
     "authorizers": {
         "simple": "cubes.auth:SimpleAuthorizer",
+        "demat": "cubes.custom_auth:DematAuthorizer",
     },
     "browsers": {
         "sql":"cubes.sql.browser:SQLBrowser",
