@@ -301,7 +301,7 @@ class SQLBrowser(AggregationBrowser):
         (statement, labels) = self.denormalized_statement(attributes, cell)
         # Order and paginate
         #
-        statement = statement.group_by(*statement.columns)
+        statement = statement.group_by(*statement._raw_columns)
         statement = order_query(statement,
                                 order,
                                 labels=labels)

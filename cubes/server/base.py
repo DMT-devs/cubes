@@ -34,6 +34,8 @@ def create_server(config=None, **_options):
     """Returns a Flask server application. `config` is a path to a
     ``slicer.ini`` file with Cubes workspace and server configuration."""
 
+    config = read_slicer_config(config)
+
     # Load extensions
     if config.has_option("server", "modules"):
         modules = shlex.split(config.get("server", "modules"))

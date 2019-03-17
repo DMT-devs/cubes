@@ -50,7 +50,7 @@ def report(dim_name=None):
     # for this simple example, we are goint to use only one dimension for
     # browsing.
 
-    cutstr = request.args.get("cut")
+    cutstr = request.values.get("cut")
     cell = Cell(cube, cuts_from_string(cube, cutstr))
 
     # Get the cut of actually browsed dimension, so we know "where we are" -

@@ -33,7 +33,7 @@ class AbstractBasicAuthenticator(Authenticator):
 
     def logout(self, request, identity):
         headers = {"WWW-Authenticate": 'Basic realm="%s"' % self.realm}
-        url_root = request.args.get('url', request.url_root)
+        url_root = request.values.get('url', request.url_root)
         m = self.pattern.search(url_root)
         if m:
             url_root = m.group(1) + "__logout__@" + m.group(2)
@@ -66,7 +66,7 @@ class PassParameterAuthenticator(Authenticator):
         self.parameter_name = parameter or "api_key"
 
     def authenticate(self, request):
-        return request.args.get(self.parameter_name)
+        return request.values.get(self.parameter_name)
 
 
 class HTTPBasicProxyAuthenticator(AbstractBasicAuthenticator):

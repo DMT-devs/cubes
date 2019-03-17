@@ -29,7 +29,7 @@ def prepare_cell(argname="cut", target="cell", restrict=False):
     }
 
     cuts = []
-    for cut_string in request.args.getlist(argname):
+    for cut_string in request.values.getlist(argname):
         cuts += cuts_from_string(g.cube, cut_string,
                                  role_member_converters=converters)
 
@@ -49,8 +49,8 @@ def prepare_cell(argname="cut", target="cell", restrict=False):
 def requires_cube(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if "lang" in request.args:
-            g.locale = request.args.get("lang")
+        if "lang" in request.values:
+            g.locale = request.values.get("lang")
         else:
             g.locale = None
 
@@ -71,8 +71,8 @@ def requires_browser(f):
 
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if "lang" in request.args:
-            g.locale = request.args.get("lang")
+        if "lang" in request.values:
+            g.locale = request.values.get("lang")
         else:
             g.locale = None
 
@@ -87,17 +87,17 @@ def requires_browser(f):
 
         prepare_cell(restrict=True)
 
-        if "page" in request.args:
+        if "page" in request.values:
             try:
-                g.page = int(request.args.get("page"))
+                g.page = int(request.values.get("page"))
             except ValueError:
                 raise RequestError("'page' should be a number")
         else:
             g.page = None
 
-        if "pagesize" in request.args:
+        if "pagesize" in request.values:
             try:
-                g.page_size = int(request.args.get("pagesize"))
+                g.page_size = int(request.values.get("pagesize"))
             except ValueError:
                 raise RequestError("'pagesize' should be a number")
         else:
@@ -107,7 +107,7 @@ def requires_browser(f):
         # order is specified as order=<field>[:<direction>]
         #
         g.order = []
-        for orders in request.args.getlist("order"):
+        for orders in request.values.getlist("order"):
             for order in orders.split(","):
                 split = order.split(":")
                 if len(split) == 1:
@@ -146,20 +146,20 @@ def log_request(action, attrib_field="attributes"):
             rlogger = current_app.slicer.request_logger
 
             # TODO: move this to request wrapper (same code as in aggregate)
-            ddlist = request.args.getlist("drilldown")
+            ddlist = request.values.getlist("drilldown")
             drilldown = []
             if ddlist:
                 for ddstring in ddlist:
                     drilldown += ddstring.split("|")
 
             other = {
-                "split": request.args.get("split"),
+                "split": request.values.get("split"),
                 "drilldown": drilldown,
                 "page": g.page,
                 "page_size": g.page_size,
-                "format": request.args.get("format"),
-                "header": request.args.get("header"),
-                "attributes": request.args.get(attrib_field)
+                "format": request.values.get("format"),
+                "header": request.values.get("header"),
+                "attributes": request.values.get(attrib_field)
             }
 
             with rlogger.log_time(action, g.browser, g.cell, g.auth_identity,

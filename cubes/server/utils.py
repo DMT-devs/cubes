@@ -83,11 +83,11 @@ def formatted_response(response, fields, labels, iterable=None):
     `data_attribute` is name of data attribute or key in the response that
     contains formateable data."""
 
-    output_format = validated_parameter(request.args, "format",
+    output_format = validated_parameter(request.values, "format",
                                         values=["json", "json_lines", "csv"],
                                         default="json")
 
-    header_type = validated_parameter(request.args, "header",
+    header_type = validated_parameter(request.values, "header",
                                       values=["names", "labels", "none"],
                                       default="labels")
 

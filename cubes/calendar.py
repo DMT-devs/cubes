@@ -306,7 +306,10 @@ class CalendarMemberConverter(object):
         units = hierarchy.level_names
         value = path[0]
         try:
-            path = self.calendar.named_relative_path(value, units)
+            if value:
+                path = self.calendar.named_relative_path(value, units)
+            else:
+                path = [value]
         except ValueError:
             return [value]
 

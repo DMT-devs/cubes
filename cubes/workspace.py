@@ -284,15 +284,32 @@ class Workspace(object):
                 raise ConfigurationError("No model path specified")
 
             path = config.get("model", "path")
-            models.append(("main", path))
+
+            store = None
+            if config.has_option("model", "store"):
+                store = config.get("model", "store")
+
+            models.append(("main", path, store))
 
         # TODO: Depreciate this too
         if config.has_section("models"):
-            models += config.items("models")
+            for model in config.items("models"):
+                model_aux = list(model)
+                model_aux.append(None)
+                models.append(tuple(model_aux))
 
-        for model, path in models:
+        aux_stores = [sec.split('_')[1] for sec in config.sections() if len(sec.split('_')) == 2 and sec.split('_')[0] == 'store']
+        for aux_store in aux_stores:
+            model_name = 'models_' + aux_store
+            if config.has_section(model_name):
+                for model in config.items(model_name):
+                    model_aux = list(model)
+                    model_aux.append(aux_store)
+                    models.append(tuple(model_aux))
+
+        for model, path, store in models:
             self.logger.debug("Loading model %s" % model)
-            self.import_model(path)
+            self.import_model(path, store=store)
 
     def flush_lookup_cache(self):
         """Flushes the cube lookup cache."""

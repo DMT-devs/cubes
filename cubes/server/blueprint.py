@@ -152,8 +152,8 @@ def process_common_parameters():
     # Copy from the application context
     g.json_record_limit = current_app.slicer.json_record_limit
 
-    if "prettyprint" in request.args:
-        g.prettyprint = str_to_bool(request.args.get("prettyprint"))
+    if "prettyprint" in request.values:
+        g.prettyprint = str_to_bool(request.values.get("prettyprint"))
     else:
         g.prettyprint = current_app.slicer.prettyprint
 
@@ -287,7 +287,7 @@ def list_cubes():
     return jsonify(cube_list)
 
 
-@slicer.route("/cube/<cube_name>/model")
+@slicer.route("/cube/<cube_name>/model", methods=["GET", "POST"])
 @requires_cube
 def cube_model(cube_name):
     if workspace.authorizer:
@@ -307,21 +307,21 @@ def cube_model(cube_name):
     return jsonify(response)
 
 
-@slicer.route("/cube/<cube_name>/aggregate")
+@slicer.route("/cube/<cube_name>/aggregate", methods=["GET", "POST"])
 @requires_browser
 @log_request("aggregate", "aggregates")
 def aggregate(cube_name):
     cube = g.cube
 
-    output_format = validated_parameter(request.args, "format",
+    output_format = validated_parameter(request.values, "format",
                                         values=["json", "csv"],
                                         default="json")
 
-    header_type = validated_parameter(request.args, "header",
+    header_type = validated_parameter(request.values, "header",
                                       values=["names", "labels", "none"],
                                       default="labels")
 
-    fields_str = request.args.get("fields")
+    fields_str = request.values.get("fields")
     if fields_str:
         fields = fields_str.lower().split(',')
     else:
@@ -331,12 +331,12 @@ def aggregate(cube_name):
     # ----------
 
     aggregates = []
-    for agg in request.args.getlist("aggregates") or []:
+    for agg in request.values.getlist("aggregates") or []:
         aggregates += agg.split("|")
 
     drilldown = []
 
-    ddlist = request.args.getlist("drilldown")
+    ddlist = request.values.getlist("drilldown")
     if ddlist:
         for ddstring in ddlist:
             drilldown += ddstring.split("|")
@@ -386,12 +386,12 @@ def aggregate(cube_name):
                     headers=headers)
 
 
-@slicer.route("/cube/<cube_name>/facts")
+@slicer.route("/cube/<cube_name>/facts", methods=["GET", "POST"])
 @requires_browser
 @log_request("facts", "fields")
 def cube_facts(cube_name):
     # Request parameters
-    fields_str = request.args.get("fields")
+    fields_str = request.values.get("fields")
     if fields_str:
         fields = fields_str.split(',')
     else:
@@ -422,7 +422,7 @@ def cube_facts(cube_name):
 
     return formatted_response(facts, fields, labels)
 
-@slicer.route("/cube/<cube_name>/fact/<fact_id>")
+@slicer.route("/cube/<cube_name>/fact/<fact_id>", methods=["GET", "POST"])
 @requires_browser
 def cube_fact(cube_name, fact_id):
     fact = g.browser.fact(fact_id)
@@ -434,13 +434,13 @@ def cube_fact(cube_name, fact_id):
                             message="No fact with id '%s'" % fact_id)
 
 
-@slicer.route("/cube/<cube_name>/members/<dimension_name>")
+@slicer.route("/cube/<cube_name>/members/<dimension_name>", methods=["GET", "POST"])
 @requires_browser
 @log_request("members")
 def cube_members(cube_name, dimension_name):
     # TODO: accept level name
-    depth = request.args.get("depth")
-    level = request.args.get("level")
+    depth = request.values.get("depth")
+    level = request.values.get("level")
 
     if depth and level:
         raise RequestError("Both depth and level provided, use only one "
@@ -458,7 +458,7 @@ def cube_members(cube_name, dimension_name):
         raise NotFoundError(dimension_name, "dimension",
                             message="Dimension '%s' was not found" % dimension_name)
 
-    hier_name = request.args.get("hierarchy")
+    hier_name = request.values.get("hierarchy")
     hierarchy = dimension.hierarchy(hier_name)
 
     if not depth and not level:
@@ -491,7 +491,7 @@ def cube_members(cube_name, dimension_name):
     return formatted_response(result, fields, labels, iterable=values)
 
 
-@slicer.route("/cube/<cube_name>/cell")
+@slicer.route("/cube/<cube_name>/cell", methods=["GET", "POST"])
 @requires_browser
 def cube_cell(cube_name):
     details = g.browser.cell_details(g.cell)
@@ -540,7 +540,7 @@ def cube_report(cube_name):
     return jsonify(result)
 
 
-@slicer.route("/cube/<cube_name>/search")
+@slicer.route("/cube/<cube_name>/search", methods=["GET", "POST"])
 def cube_search(cube_name):
     # TODO: this is ported from old Werkzeug slicer, requires revision
 
@@ -557,11 +557,11 @@ def cube_search(cube_name):
                                                  browser=g.browser,
                                                  locales=g.locales,
                                                  **options)
-    dimension = request.args.get("dimension")
+    dimension = request.values.get("dimension")
     if not dimension:
         raise RequestError("No search dimension provided")
 
-    query = request.args.get("query")
+    query = request.values.get("query")
 
     if not query:
         raise RequestError("No search query provided")
