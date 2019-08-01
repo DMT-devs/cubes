@@ -261,9 +261,12 @@ class Workspace(object):
 
         if config.has_option("workspace", "authorization"):
             auth_type = config.get("workspace", "authorization")
-            options = dict(config.items("authorization"))
-            options["cubes_root"] = self.root_dir
-            self.authorizer = ext.authorizer(auth_type, **options)
+            if auth_type == 'none':
+                self.authorizer = None
+            else:
+                options = dict(config.items("authorization"))
+                options["cubes_root"] = self.root_dir
+                self.authorizer = ext.authorizer(auth_type, **options)
         else:
             self.authorizer = None
 
