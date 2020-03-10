@@ -4,6 +4,7 @@ from __future__ import absolute_import
 from collections import defaultdict
 import json
 import codecs
+import ssl
 
 from .cells import Cell, cut_from_string, cut_from_dict
 from .model import string_to_dimension_level
@@ -105,6 +106,11 @@ class DematAuthorizer(Authorizer):
             "type": "string"
         },
         {
+            "name": "ignore_ssl_errors",
+            "description": "Ignore SSL certificate errors",
+            "type": "boolean"
+        },
+        {
             "name": "authorize_method",
             "description": "Authorize method name",
             "type": "string"
@@ -127,7 +133,10 @@ class DematAuthorizer(Authorizer):
         },
     ]
 
-    def __init__(self, url=None, authorize_method='authorize', restricted_cell_method='restricted-cell', hierarchy_limits_method='hierarchy-limits', order=None, **options):
+    def __init__(
+        self, url=None, ignore_ssl_errors=False, authorize_method='authorize', restricted_cell_method='restricted-cell',
+        hierarchy_limits_method='hierarchy-limits', order=None, **options
+    ):
         """Creates a Demat based authorizer. Reads data from Demat"""
 
         super(DematAuthorizer, self).__init__()
@@ -136,6 +145,9 @@ class DematAuthorizer(Authorizer):
             self.url = url
         else:
             raise ConfigurationError("Missing authorizer url")
+
+        if ignore_ssl_errors:
+            ssl._create_default_https_context = ssl._create_unverified_context
 
         self.authorize_method = authorize_method
         self.restricted_cell_method = restricted_cell_method
