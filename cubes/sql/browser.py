@@ -26,7 +26,7 @@ from .functions import available_aggregate_functions
 from .mapper import DenormalizedMapper, StarSchemaMapper, map_base_attributes
 from .mapper import distill_naming
 from .query import StarSchema, QueryContext, to_join, FACT_KEY_LABEL
-from .utils import paginate_query, order_query
+from .utils import apply_permissions_to_statement, extract_permissions_from_cell, paginate_query, order_query
 
 
 __all__ = [
@@ -479,9 +479,11 @@ class SQLBrowser(AggregationBrowser):
         correct labels to be applied to the iterated result in case of
         `safe_labels`."""
 
+        (aux_cell, permissions_cell) = extract_permissions_from_cell(cell)
+
         attributes = attributes or self.cube.all_fact_attributes
 
-        refs = [attr.ref for attr in collect_attributes(attributes, cell)]
+        refs = [attr.ref for attr in collect_attributes(attributes, aux_cell)]
         context_attributes = self.cube.get_attributes(refs)
         context = self._create_context(context_attributes)
 
@@ -493,11 +495,13 @@ class SQLBrowser(AggregationBrowser):
         names = [attr.ref for attr in attributes]
         selection += context.get_columns(names)
 
-        cell_condition = context.condition_for_cell(cell)
+        cell_condition = context.condition_for_cell(aux_cell)
 
         statement = sql.expression.select(selection,
                                           from_obj=context.star,
                                           whereclause=cell_condition)
+
+        apply_permissions_to_statement(self, statement, permissions_cell)
 
         return (statement, context.get_labels(statement.columns))
 
@@ -543,9 +547,11 @@ class SQLBrowser(AggregationBrowser):
                           (",".join([compat.to_unicode(cut) for cut in cell.cuts]),
                            drilldown, for_summary))
 
+        (aux_cell, permissions_cell) = extract_permissions_from_cell(cell)
+
         # TODO: it is verylikely that the _create_context is not getting all
         # attributes, for example those that aggregate depends on
-        refs = collect_attributes(aggregates, cell, drilldown, split)
+        refs = collect_attributes(aggregates, aux_cell, drilldown, split)
         attributes = self.cube.get_attributes(refs, aggregated=True)
         context = self._create_context(attributes)
 
@@ -565,7 +571,7 @@ class SQLBrowser(AggregationBrowser):
 
         # WHERE
         # -----
-        condition = context.condition_for_cell(cell)
+        condition = context.condition_for_cell(aux_cell)
 
         group_by = selection[:] if not for_summary else None
 
@@ -585,6 +591,8 @@ class SQLBrowser(AggregationBrowser):
                                           use_labels=True,
                                           whereclause=condition,
                                           group_by=group_by)
+
+        apply_permissions_to_statement(self, statement, permissions_cell)
 
         return (statement, context.get_labels(statement.columns))
 

@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 """Cubes SQL backend utilities, mostly to be used by the slicer command."""
 
+from sqlalchemy import text
 from sqlalchemy.sql.expression import Executable, ClauseElement
 from sqlalchemy.ext.compiler import compiles
 import sqlalchemy.sql as sql
@@ -8,6 +9,8 @@ import sqlalchemy.sql as sql
 from collections import OrderedDict
 
 from ..browser import SPLIT_DIMENSION_NAME
+from ..cells import Cell
+from ..model import collect_attributes
 
 __all__ = [
     "CreateTableAsSelect",
@@ -161,3 +164,49 @@ def order_query(statement, order, natural_order=None, labels=None):
 
     return statement
 
+
+def extract_permissions_from_cell(cell):
+    aux_cell = Cell(cube=cell.cube, cuts=cell.cuts) if cell else None
+
+    permissions_cell = None
+    permissions_cuts = (
+        [cut for cut in aux_cell.cuts if cut.dimension.info.get('type', None) == 'Permission'] if aux_cell else []
+    )
+    if permissions_cuts:
+        permissions_cell = Cell(cube=aux_cell.cube, cuts=permissions_cuts)
+        aux_cell.cuts = [
+            cut for cut in aux_cell.cuts if cut not in permissions_cell.cuts
+        ]
+
+    return (aux_cell, permissions_cell)
+
+
+def apply_permissions_to_statement(sql_browser, statement, permissions_cell):
+    if (
+        sql_browser is not None
+        and statement is not None
+        and permissions_cell is not None
+    ):
+        permission_refs = collect_attributes([], permissions_cell)
+        permission_attributes = permissions_cell.cube.get_attributes(
+            permission_refs, aggregated=True
+        )
+        permission_context = sql_browser._create_context(permission_attributes)
+        permission_selection = [sql_browser.star.fact_key_column]
+        permission_condition = permission_context.condition_for_cell(
+            permissions_cell
+        )
+        permission_subquery = sql.expression.subquery(
+            "allowed_records",
+            columns=permission_selection,
+            from_obj=permission_context.star,
+            whereclause=permission_condition,
+            use_labels=True,
+            distinct=True
+        )
+        fact_pk = "{}.{}".format(
+            permissions_cell.cube.fact, permissions_cell.cube.key
+        )
+        statement.append_whereclause(
+            text(fact_pk) == permission_subquery.c.__fact_key__
+        )
