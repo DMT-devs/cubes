@@ -161,6 +161,7 @@ class SQLStore(Store):
         if not engine:
             # Process SQLAlchemy options
             sa_options = sqlalchemy_options(options)
+            sa_options["connect_args"] = {"options": "-c timezone=Europe/Paris"}
             engine = sa.create_engine(url, **sa_options)
 
         self.logger = get_logger(name=__name__)
