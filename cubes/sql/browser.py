@@ -2,7 +2,7 @@
 """SQL Browser"""
 
 from __future__ import absolute_import
-
+from flask import request
 import collections
 
 try:
@@ -346,7 +346,12 @@ class SQLBrowser(AggregationBrowser):
         """Execute the `statement`, optionally log it. Returns the result
         cursor."""
         self._log_statement(statement, label)
-        return self.connectable.execute(statement)
+        timezone = request.values.get('demat_timezone') if request.values.get('demat_timezone') else self.store.options.get('demat_timezone')
+        with self.connectable.begin() as connection:
+            if timezone:
+                connection.execute(f"SET TIMEZONE='{timezone}'")
+            result = connection.execute(statement)
+        return result
 
     def provide_aggregate(self, cell, aggregates, drilldown, split, order,
                           page, page_size, **options):
