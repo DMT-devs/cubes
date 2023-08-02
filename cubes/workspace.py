@@ -128,6 +128,10 @@ class Workspace(object):
         else:
             self.logger.debug("Models root set to current directory")
 
+        # Demat timezone
+        if config.has_option("demat_timezone", "timezone"):
+            self.demat_timezone = config.get("demat_timezone", "timezone")
+
         # Namespaces and Model Objects
         # ============================
 
@@ -681,5 +685,6 @@ class Workspace(object):
 
         # TODO: temporary hack to pass store name and store type
         store = ext.store(type_, store_type=type_, **options)
+        options["demat_timezone"] = self.demat_timezone
         self.stores[name] = store
         return store
