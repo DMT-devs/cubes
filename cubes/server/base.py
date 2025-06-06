@@ -5,6 +5,12 @@ from .blueprint import slicer
 from flask import Flask
 import shlex
 import os
+try:
+    import uwsgi
+
+    USING_UWSGI = True
+except ImportError:
+    USING_UWSGI = False
 
 from .utils import *
 from .. import compat
@@ -43,6 +49,23 @@ def create_server(config=None, **_options):
             e = __import__(module)
 
     app = Flask(__name__.rsplit('.', 1)[0])
+
+    @app.before_request
+    def intercept_request():
+        if request and USING_UWSGI:
+            aggregates = (
+                request.get_json().get("aggregates", "-")
+                if request.is_json
+                else request.form.get("aggregates", "-")
+            )
+            drilldown = (
+                request.get_json().get("drilldown", "-")
+                if request.is_json
+                else request.form.get("drilldown", "-")
+            )
+            uwsgi.set_logvar("aggregates", aggregates)
+            uwsgi.set_logvar("drilldown", drilldown)
+
     # FIXME: read note about _options in Workspace. Only for internal use as a
     # temporary quick fix.
     app.register_blueprint(slicer, config=config, **_options)
