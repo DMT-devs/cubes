@@ -52,19 +52,23 @@ def create_server(config=None, **_options):
 
     @app.before_request
     def intercept_request():
-        if request and USING_UWSGI:
-            aggregates = (
-                request.get_json().get("aggregates", "-")
-                if request.is_json
-                else request.form.get("aggregates", "-")
-            )
-            drilldown = (
-                request.get_json().get("drilldown", "-")
-                if request.is_json
-                else request.form.get("drilldown", "-")
-            )
-            uwsgi.set_logvar("aggregates", aggregates)
-            uwsgi.set_logvar("drilldown", drilldown)
+        if not (request and USING_UWSGI):
+            return
+
+        def get_param(param, default):
+            return request.get_json().get(param, default) if request.is_json else request.form.get(param, default)
+
+        # Get and format params
+        aggregates = get_param("aggregates", "-")
+        drilldown = get_param("drilldown", "[]")
+        cut = get_param("cut", "{}")
+
+        drilldown = f"[{drilldown.replace('|', ',')}]" if drilldown != "[]" else drilldown
+        cut = f"{{{cut.replace('|', ',')}}}" if cut != "{}" else cut
+
+        # Set log in uWSGI
+        for key, value in {"aggregates": aggregates, "drilldown": drilldown, "cut": cut}.items():
+            uwsgi.set_logvar(key, value)
 
     # FIXME: read note about _options in Workspace. Only for internal use as a
     # temporary quick fix.
