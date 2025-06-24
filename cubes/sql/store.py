@@ -1,11 +1,14 @@
 # -*- encoding=utf -*-
 
 from __future__ import absolute_import
+import configparser
+from typing import Optional
 
 try:
     import sqlalchemy as sa
     import sqlalchemy.sql as sql
     from sqlalchemy.engine import reflection
+    from sqlalchemy.engine.url import make_url
     from sqlalchemy.orm.query import QueryContext
     from sqlalchemy.schema import Index
 except ImportError:
@@ -161,7 +164,9 @@ class SQLStore(Store):
         if not engine:
             # Process SQLAlchemy options
             sa_options = sqlalchemy_options(options)
-            sa_options["connect_args"] = {"options": "-c timezone=Europe/Paris"}
+            backend = self._get_backend_from_config()
+            if backend == "postgresql":
+                sa_options["connect_args"] = {"options": "-c timezone=Europe/Paris"}
             engine = sa.create_engine(url, **sa_options)
 
         self.logger = get_logger(name=__name__)
@@ -179,6 +184,17 @@ class SQLStore(Store):
         else:
             self.metadata = sa.MetaData(bind=self.connectable,
                                         schema=self.schema)
+
+    def _get_backend_from_config(self, section: str = "store") -> Optional[str]:
+        try:
+            config = configparser.ConfigParser()
+            config.read("slicer.ini")
+            if config.has_option(section, "url"):
+                url = config.get(section, "url")
+                return make_url(url).get_backend_name()
+        except Exception:
+            pass
+        return None
 
     # TODO: make a separate SQL utils function
     def _drop_table(self, table, schema, force=False):
