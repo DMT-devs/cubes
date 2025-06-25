@@ -61,13 +61,12 @@ def create_server(config=None, **_options):
         # Get and format params
         aggregates = get_param("aggregates", "-")
         drilldown = get_param("drilldown", "[]")
-        cut = get_param("cut", "{}")
 
+        # Format drilldown
         drilldown = f"[{drilldown.replace('|', ',')}]" if drilldown != "[]" else drilldown
-        cut = f"{{{cut.replace('|', ',')}}}" if cut != "{}" else cut
 
         # Set log in uWSGI
-        for key, value in {"aggregates": aggregates, "drilldown": drilldown, "cut": cut}.items():
+        for key, value in {"aggregates": aggregates, "drilldown": drilldown}.items():
             uwsgi.set_logvar(key, value)
 
     # FIXME: read note about _options in Workspace. Only for internal use as a
