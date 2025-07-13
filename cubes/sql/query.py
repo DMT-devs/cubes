@@ -20,9 +20,9 @@ from __future__ import absolute_import
 import logging
 from collections import namedtuple
 
-import sqlalchemy as sa
-import sqlalchemy.sql as sql
-from sqlalchemy.sql.expression import and_
+from sqlalchemy import Table, Column, MetaData, create_engine, Index, inspect, text, func, select, case, extract, join, exc
+from sqlalchemy.orm import Session
+from sqlalchemy.sql import and_, or_, not_, operators
 
 from ..model import object_dict
 from ..errors import InternalError, ModelError, ArgumentError, HierarchyError
@@ -332,7 +332,7 @@ class StarSchema(object):
     """
 
     def __init__(self, label, metadata, mappings, fact, fact_key='id',
-                 joins=None, tables=None, schema=None):
+                 joins=None, tables=None, schema=None, engine=None):
 
         # TODO: expectation is, that the snowlfake is already localized, the
         # owner of the snowflake should generate one snowflake per locale.
@@ -349,6 +349,7 @@ class StarSchema(object):
         self.joins = joins or []
         self.schema = schema
         self.table_expressions = tables or {}
+        self.connectable = engine
 
         # Cache
         # -----
@@ -415,13 +416,7 @@ class StarSchema(object):
 
         # Collect the fact table as the root master table
         #
-        fact_table = _TableRef(schema=self.schema,
-                               name=self.fact_name,
-                               alias=self.fact_name,
-                               key=(self.schema, self.fact_name),
-                               table=self.fact_table,
-                               join=None
-                              )
+        fact_table = _TableRef(schema=self.schema, name=self.fact_name, alias=self.fact_name, key=(self.schema, self.fact_name), table=self.fact_table, join=None)
 
         self._tables[fact_table.key] = fact_table
 
@@ -429,46 +424,37 @@ class StarSchema(object):
         # We don't need to collect the master tables as they are expected to
         # be referenced as 'details'. The exception is the fact table that is
         # provided explicitly for the snowflake schema.
-
-
         # Collect details for duplicate verification. It sohuld not be
         # possible to join one detail multiple times with the same name. Alias
         # has to be used.
         details = set()
-
-        for join in self.joins:
+        for join_for in self.joins:
             # just ask for the table
 
-            if not join.detail.table:
-                raise ModelError("No detail table specified for a join in "
-                                 "schema '{}'. Master of the join is '{}'"
+            if not join_for.detail.table:
+                raise ModelError("No detail table specified for a join_for in "
+                                 "schema '{}'. Master of the join_for is '{}'"
                                  .format(self.label,
-                                         _format_key(self._master_key(join))))
+                                         _format_key(self._master_key(join_for))))
 
-            table = self.physical_table(join.detail.table,
-                                        join.detail.schema)
+            table = self.physical_table(join_for.detail.table,
+                                        join_for.detail.schema)
 
-            if join.alias:
-                table = table.alias(join.alias)
-                alias = join.alias
+            if join_for.alias:
+                table = table.alias(join_for.alias)
+                alias = join_for.alias
             else:
-                alias = join.detail.table
+                alias = join_for.detail.table
 
-            key = (join.detail.schema or self.schema, alias)
+            key = (join_for.detail.schema or self.schema, alias)
 
             if key in details:
                 raise ModelError("Detail table '{}' joined twice in star"
-                                 " schema {}. Join alias is required."
+                                 " schema {}. Join_for alias is required."
                                  .format(_format_key(key), self.label))
             details.add(key)
 
-            ref = _TableRef(table=table,
-                            schema=join.detail.schema,
-                            name=join.detail.table,
-                            alias=alias,
-                            key=key,
-                            join=join
-                           )
+            ref = _TableRef(table=table, schema=join_for.detail.schema, name=join_for.detail.table, alias=alias, key=key, join=join_for)
 
             self._tables[key] = ref
 
@@ -522,19 +508,14 @@ class StarSchema(object):
         coalesced_schema = schema or self.schema
 
         try:
-            table = sa.Table(name,
-                             self.metadata,
-                             autoload=True,
-                             schema=coalesced_schema)
-
-        except sa.exc.NoSuchTableError:
+            table = Table(name, self.metadata, schema=coalesced_schema, autoload_with=self.connectable)
+        except exc.NoSuchTableError:
             in_schema = (" in schema '{}'"
                          .format(schema)) if schema else ""
             msg = "No such fact table '{}'{}.".format(name, in_schema)
             raise NoSuchTableError(msg)
 
         return table
-
 
     def column(self, logical):
         """Return a column for `logical` reference. The returned column will
@@ -580,10 +561,9 @@ class StarSchema(object):
 
         # Extract part of the date
         if mapping.extract:
-            column = sql.expression.extract(mapping.extract, column)
+            column = extract(mapping.extract, column)
         if mapping.function:
-            # FIXME: add some protection here for the function name!
-            column = getattr(sql.expression.func, mapping.function)(column)
+            column = getattr(func, mapping.function)(column)
 
         column = column.label(logical)
 
@@ -689,7 +669,7 @@ class StarSchema(object):
         .. code-block:: python
 
             star = star_schema.star(attributes)
-            statement = sql.expression.statement(selection,
+            statement = statement(selection,
                                                  from_obj=star,
                                                  whereclause=condition)
             result = engine.execute(statement)
@@ -726,7 +706,7 @@ class StarSchema(object):
                 raise ModelError("Missing join for table '{}'"
                                  .format(_format_key(table.key)))
 
-            join = table.join
+            join_table = table.join
 
             # Get the physical table object (aliased) and already constructed
             # key (properly aliased)
@@ -736,8 +716,8 @@ class StarSchema(object):
             # The `table` here is a detail table to be joined. We need to get
             # the master table this table joins to:
 
-            master = join.master
-            master_key = self._master_key(join)
+            master = join_table.master
+            master_key = self._master_key(join_table)
 
             # We need plain tables to get columns for prepare the join
             # condition. We can't get it form `star`.
@@ -759,7 +739,7 @@ class StarSchema(object):
             # -------------------
             try:
                 detail_columns = _make_compound_key(detail_table,
-                                                    join.detail.column)
+                                                    join_table.detail.column)
             except KeyError as e:
                 raise ModelError('Unable to find detail key column "{key}" '
                                  'in table "{table}" for star {schema} '
@@ -788,20 +768,18 @@ class StarSchema(object):
             # left-outer join.
             left, right = (star, detail_table)
 
-            if join.method is None or join.method == "match":
+            if join_table.method is None or join_table.method == "match":
                 is_outer = False
-            elif join.method == "master":
+            elif join_table.method == "master":
                 is_outer = True
-            elif join.method == "detail":
+            elif join_table.method == "detail":
                 # Swap the master and detail tables to perform RIGHT OUTER JOIN
                 left, right = (right, left)
                 is_outer = True
             else:
-                raise ModelError("Unknown join method '%s'" % join.method)
+                raise ModelError("Unknown join method '%s'" % join_table.method)
 
-            star = sql.expression.join(left, right,
-                                       onclause=onclause,
-                                       isouter=is_outer)
+            star = join(left, right, onclause=onclause, isouter=is_outer)
 
             # Consume the detail
             if detail_key not in star_tables:
@@ -974,10 +952,10 @@ class QueryContext(object):
                                                          invert=False)
                     set_conds.append(condition)
 
-                condition = sql.expression.or_(*set_conds)
+                condition = or_(*set_conds)
 
                 if cut.invert:
-                    condition = sql.expression.not_(condition)
+                    condition = not_(condition)
 
             elif isinstance(cut, RangeCut):
                 condition = self.range_condition(str(cut.dimension),
@@ -1008,10 +986,10 @@ class QueryContext(object):
             column = self.column(level_key)
             conditions.append(column == value)
 
-        condition = sql.expression.and_(*conditions)
+        condition = and_(*conditions)
 
         if invert:
-            condition = sql.expression.not_(condition)
+            condition = not_(condition)
 
         return condition
 
@@ -1029,10 +1007,10 @@ class QueryContext(object):
         if upper is not None:
             conditions.append(upper)
 
-        condition = sql.expression.and_(*conditions)
+        condition = and_(*conditions)
 
         if invert:
-            condition = sql.expression.not_(condition)
+            condition = not_(condition)
 
         return condition
 
@@ -1062,17 +1040,17 @@ class QueryContext(object):
         # 1 - upper bound
         if bound == 1:
             # 1 - upper bound (that is <= and < operator)
-            operator = sql.operators.le if first else sql.operators.lt
+            operator = operators.le if first else operators.lt
         else:
             # else - lower bound (that is >= and > operator)
-            operator = sql.operators.ge if first else sql.operators.gt
+            operator = operators.ge if first else operators.gt
 
         column = self.column(levels[-1])
         conditions.append(operator(column, path[-1]))
-        condition = sql.expression.and_(*conditions)
+        condition = and_(*conditions)
 
         if last is not None:
-            condition = sql.expression.or_(condition, last)
+            condition = or_(condition, last)
 
         return condition
 
@@ -1103,10 +1081,8 @@ class QueryContext(object):
         """Create a column for a cell split from list of `cust`."""
 
         condition = self.condition_for_cell(split_cell)
-        split_column = sql.expression.case([(condition, True)],
-                                           else_=False)
+        split_column = case([(condition, True)], else_=False)
 
         label = label or SPLIT_DIMENSION_NAME
-
         return split_column.label(label)
 
