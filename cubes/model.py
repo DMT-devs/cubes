@@ -762,7 +762,7 @@ class Cube(ModelObject):
         return out
 
     def __eq__(self, other):
-        if other is None or not isinstance(other, self):
+        if other is None or not isinstance(other, type(self)):
             return False
 
         if self.name != other.name or self.label != other.label or self.description != other.description:
@@ -1651,7 +1651,7 @@ class Hierarchy(Conceptual):
         return [level.key for level in levels]
 
     def __eq__(self, other):
-        if not other or not isinstance(other, self):
+        if not other or not isinstance(other, type(self)):
             return False
 
         return self.name == other.name and self.label == other.label and self.levels == other.levels
