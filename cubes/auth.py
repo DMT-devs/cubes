@@ -10,25 +10,24 @@ from .errors import UserError, ConfigurationError, NoSuchDimensionError
 from .common import read_json_file, sorted_dependencies
 from . import compat
 
-__all__ = (
-    "Authorizer",
-    "SimpleAuthorizer",
-    "AuthorizationError",
-    "NotAuthorized",
-    "right_from_dict"
-)
+__all__ = ("Authorizer", "SimpleAuthorizer", "AuthorizationError", "NotAuthorized", "right_from_dict")
 
-ALL_CUBES_WILDCARD = '*'
+ALL_CUBES_WILDCARD = "*"
+
 
 class AuthorizationError(UserError):
     """Raised when there is any authorization-related error. Use
     more specific `NotAuthorized` when access right is denied."""
+
     pass
+
 
 class NotAuthorized(AuthorizationError):
     """Raised when user is not authorized for the request."""
+
     # Note: This is not called NotAuthorizedError as it is not in fact an
     # error, it is just type of signal.
+
 
 class Authorizer(object):
     def authorize(self, token, cubes):
@@ -59,8 +58,8 @@ class NoopAuthorizer(Authorizer):
 
 
 class _SimpleAccessRight(object):
-    def __init__(self, roles, allowed_cubes, denied_cubes, cell_restrictions,
-                 hierarchy_limits):
+
+    def __init__(self, roles, allowed_cubes, denied_cubes, cell_restrictions, hierarchy_limits):
         self.roles = set(roles) if roles else set([])
         self.cell_restrictions = cell_restrictions or {}
 
@@ -115,7 +114,7 @@ class _SimpleAccessRight(object):
             else:
                 self.cell_restrictions[cube] += restrictions
 
-        for cube, limits  in other.hierarchy_limits.items():
+        for cube, limits in other.hierarchy_limits.items():
             if not cube in self.hierarchy_limits:
                 self.hierarchy_limits[cube] = limits
             else:
@@ -127,8 +126,7 @@ class _SimpleAccessRight(object):
 
         allow = False
         if self.allowed_cubes:
-            if (name in self.allowed_cubes) or \
-                        (ALL_CUBES_WILDCARD in self.allowed_cubes):
+            if (name in self.allowed_cubes) or (ALL_CUBES_WILDCARD in self.allowed_cubes):
                 allow = True
 
             if not allow and self.allowed_cube_prefix:
@@ -138,8 +136,7 @@ class _SimpleAccessRight(object):
 
         deny = False
         if self.denied_cubes:
-            if (name in self.denied_cubes) or \
-                        (ALL_CUBES_WILDCARD in self.denied_cubes):
+            if (name in self.denied_cubes) or (ALL_CUBES_WILDCARD in self.denied_cubes):
                 deny = True
 
             if not deny and self.denied_cube_prefix:
@@ -176,7 +173,7 @@ class _SimpleAccessRight(object):
             "allowed_cubes": list(self.allowed_cubes),
             "denied_cubes": list(self.denied_cubes),
             "cell_restrictions": self.cell_restrictions,
-            "hierarchy_limits": self.hierarchy_limits
+            "hierarchy_limits": self.hierarchy_limits,
         }
 
         return as_dict
@@ -184,42 +181,42 @@ class _SimpleAccessRight(object):
 
 def right_from_dict(info):
     return _SimpleAccessRight(
-        roles=info.get('roles'),
-        allowed_cubes=info.get('allowed_cubes'),
-        denied_cubes=info.get('denied_cubes'),
-        cell_restrictions=info.get('cell_restrictions'),
-        hierarchy_limits=info.get('hierarchy_limits')
+        roles=info.get("roles"),
+        allowed_cubes=info.get("allowed_cubes"),
+        denied_cubes=info.get("denied_cubes"),
+        cell_restrictions=info.get("cell_restrictions"),
+        hierarchy_limits=info.get("hierarchy_limits"),
     )
+
 
 class SimpleAuthorizer(Authorizer):
     __options__ = [
-        {
-            "name": "rights_file",
-            "description": "JSON file with access rights",
-            "type": "string"
-        },
-        {
-            "name": "roles_file",
-            "description": "JSON file with access right roles",
-            "type": "string"
-        },
+        {"name": "rights_file", "description": "JSON file with access rights", "type": "string"},
+        {"name": "roles_file", "description": "JSON file with access right roles", "type": "string"},
         {
             "name": "order",
             "description": "Order of allow/deny",
             "type": "string",
-            "values": ["allow_deny", "deny_allow"]
+            "values": ["allow_deny", "deny_allow"],
         },
         {
             "name": "guest",
             "description": "Name of the 'guest' role",
             "type": "string",
         },
-
     ]
 
-    def __init__(self, rights_file=None, roles_file=None, roles=None,
-                 rights=None, identity_dimension=None, order=None,
-                 guest=None, **options):
+    def __init__(
+        self,
+        rights_file=None,
+        roles_file=None,
+        roles=None,
+        rights=None,
+        identity_dimension=None,
+        order=None,
+        guest=None,
+        **options
+    ):
         """Creates a simple JSON-file based authorizer. Reads data from
         `rights_file` and `roles_file` and merge them with `roles` and
         `rights` dictionaries respectively."""
@@ -291,8 +288,7 @@ class SimpleAuthorizer(Authorizer):
             self.identity_hierarchy = None
 
     def expand_roles(self, info):
-        """Merge `right` with its roles. `right` has to be a dictionary.
-        """
+        """Merge `right` with its roles. `right` has to be a dictionary."""
         right = right_from_dict(info)
         for role_name in list(right.roles):
             role = self.roles[role_name]
@@ -365,9 +361,9 @@ class SimpleAuthorizer(Authorizer):
             hier = ident_dim.hierarchy(self.identity_hierarchy)
 
             if len(hier) != 1:
-                raise ConfigurationError("Identity hierarchy has to be flat "
-                                         "(%s in dimension %s is not)"
-                                         % (str(hier), str(ident_dim)))
+                raise ConfigurationError(
+                    "Identity hierarchy has to be flat " "(%s in dimension %s is not)" % (str(hier), str(ident_dim))
+                )
 
             # TODO: set as hidden
             cut = PointCut(ident_dim, [identity], hierarchy=hier, hidden=True)
@@ -382,5 +378,3 @@ class SimpleAuthorizer(Authorizer):
         right = self.right(token)
 
         return right.hierarchy_limits.get(str(cube), [])
-
-

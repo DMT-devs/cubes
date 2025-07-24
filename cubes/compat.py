@@ -11,7 +11,7 @@ if py3k:
     string_type = str
     binary_type = bytes
     text_type = str
-    int_types = int,
+    int_types = (int,)
     iterbytes = iter
 
     from urllib.parse import urlparse
@@ -47,6 +47,7 @@ else:
     from ConfigParser import SafeConfigParser as ConfigParser
     from StringIO import StringIO
     from Queue import Queue
+
     reduce = reduce
 
     def to_str(b):
@@ -56,14 +57,13 @@ else:
         if isinstance(s, unicode):
             return s
         s = str(s)
-        for enc in ('utf8', 'latin-1'):
+        for enc in ("utf8", "latin-1"):
             try:
                 return unicode(s, enc)
             except UnicodeDecodeError:
                 pass
 
-        raise ValueError("Cannot decode for unicode using any of the default "
-                         "encodings: %s" % s)
+        raise ValueError("Cannot decode for unicode using any of the default " "encodings: %s" % s)
 
     def open_unicode(filename):
         return open(filename)

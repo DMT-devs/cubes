@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
-from ..errors import *
 from flask import Response, redirect
 import re
 
-__all__ = (
-    "Authenticator",
-    "NotAuthenticated"
-)
+__all__ = ("Authenticator", "NotAuthenticated")
 
 # IMPORTANT: This is provisional code. Might be changed or removed.
 #
+
 
 class NotAuthenticated(Exception):
     pass
@@ -20,7 +17,7 @@ class Authenticator(object):
         raise NotImplementedError
 
     def info_dict(self, request):
-        return { 'username' : self.authenticate(request) }
+        return {"username": self.authenticate(request)}
 
     def logout(self, request, identity):
         return "logged out"
@@ -33,7 +30,7 @@ class AbstractBasicAuthenticator(Authenticator):
 
     def logout(self, request, identity):
         headers = {"WWW-Authenticate": 'Basic realm="%s"' % self.realm}
-        url_root = request.values.get('url', request.url_root)
+        url_root = request.values.get("url", request.url_root)
         m = self.pattern.search(url_root)
         if m:
             url_root = m.group(1) + "__logout__@" + m.group(2)
@@ -41,10 +38,12 @@ class AbstractBasicAuthenticator(Authenticator):
         else:
             return Response("logged out", status=401, headers=headers)
 
+
 class AdminAdminAuthenticator(AbstractBasicAuthenticator):
     """Simple HTTP Basic authenticator for testing purposes. User name and
     password have to be the same. User name is passed as the authenticated
     identity."""
+
     def __init__(self, realm=None, **options):
         super(AdminAdminAuthenticator, self).__init__(realm=realm)
 
@@ -61,6 +60,7 @@ class AdminAdminAuthenticator(AbstractBasicAuthenticator):
 class PassParameterAuthenticator(Authenticator):
     """Permissive authenticator that passes an URL parameter (default
     ``api_key``) as idenity."""
+
     def __init__(self, parameter=None, **options):
         super(PassParameterAuthenticator, self).__init__(**options)
         self.parameter_name = parameter or "api_key"
@@ -77,7 +77,7 @@ class HTTPBasicProxyAuthenticator(AbstractBasicAuthenticator):
 
     def authenticate(self, request):
         """Permissive authenticator using HTTP Basic authentication that
-        assumes the server to be behind a proxy, and that the proxy authenticated the user. 
+        assumes the server to be behind a proxy, and that the proxy authenticated the user.
         Does not check for a password, just passes the `username` as identity"""
         auth = request.authorization
 
@@ -85,4 +85,3 @@ class HTTPBasicProxyAuthenticator(AbstractBasicAuthenticator):
             return auth.username
 
         raise NotAuthenticated(realm=self.realm)
-

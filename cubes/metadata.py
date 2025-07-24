@@ -21,7 +21,7 @@ import json
 import os
 import re
 
-from collections import OrderedDict, namedtuple
+from collections import namedtuple
 from .errors import ModelError, CubesError, ArgumentError
 from .errors import ModelInconsistencyError
 from . import compat
@@ -30,19 +30,18 @@ try:
     import jsonschema
 except ImportError:
     from .common import MissingPackage
+
     jsonschema = MissingPackage("jsonschema", "Model validation")
 
 __all__ = (
     "read_model_metadata",
     "read_model_metadata_bundle",
     "write_model_metadata_bundle",
-
     "expand_cube_metadata",
     "expand_dimension_links",
     "expand_dimension_metadata",
     "expand_level_metadata",
     "expand_attribute_metadata",
-
     "validate_model",
 )
 
@@ -54,13 +53,14 @@ __all__ = (
 # strip_mappings(cube) -> remove mappings from cube
 # strip_mappings
 
+
 def _json_from_url(url):
     """Opens `resource` either as a file with `open()`or as URL with
-    `urlopen()`. Returns opened handle. """
+    `urlopen()`. Returns opened handle."""
 
     parts = compat.urlparse(url)
 
-    if parts.scheme in ('', 'file'):
+    if parts.scheme in ("", "file"):
         handle = compat.open_unicode(parts.path)
     elif len(parts.scheme) == 1:
         # TODO: This is temporary hack for MS Windows which can be replaced by
@@ -72,7 +72,9 @@ def _json_from_url(url):
     try:
         desc = json.load(handle)
     except ValueError as e:
-        import pdb; pdb.set_trace()
+        import pdb
+
+        pdb.set_trace()
         raise SyntaxError("Syntax error in %s: %s" % (url, str(e)))
     finally:
         handle.close()
@@ -87,7 +89,7 @@ def read_model_metadata(source):
 
     if isinstance(source, compat.string_type):
         parts = compat.urlparse(source)
-        if parts.scheme in ('', 'file') and os.path.isdir(parts.path):
+        if parts.scheme in ("", "file") and os.path.isdir(parts.path):
             source = parts.path
             return read_model_metadata_bundle(source)
         elif len(parts.scheme) == 1 and os.path.isdir(source):
@@ -115,52 +117,48 @@ def read_model_metadata_bundle(path):
     if not os.path.isdir(path):
         raise ArgumentError("Path '%s' is not a directory.")
 
-    info_path = os.path.join(path, 'model.json')
+    info_path = os.path.join(path, "model.json")
 
     if not os.path.exists(info_path):
-        raise ModelError('main model info %s does not exist' % info_path)
+        raise ModelError("main model info %s does not exist" % info_path)
 
     model = _json_from_url(info_path)
 
     # Find model object files and load them
 
-    if not "dimensions" in model:
+    if "dimensions" not in model:
         model["dimensions"] = []
 
-    if not "cubes" in model:
+    if "cubes" not in model:
         model["cubes"] = []
 
     for dirname, dirnames, filenames in os.walk(path):
         for filename in filenames:
-            if os.path.splitext(filename)[1] != '.json':
+            if os.path.splitext(filename)[1] != ".json":
                 continue
 
-            split = re.split('_', filename)
+            split = re.split("_", filename)
             prefix = split[0]
             obj_path = os.path.join(dirname, filename)
 
-            if prefix in ('dim', 'dimension'):
+            if prefix in ("dim", "dimension"):
                 desc = _json_from_url(obj_path)
                 try:
                     name = desc["name"]
                 except KeyError:
-                    raise ModelError("Dimension file '%s' has no name key" %
-                                                                     obj_path)
+                    raise ModelError("Dimension file '%s' has no name key" % obj_path)
                 if name in model["dimensions"]:
-                    raise ModelError("Dimension '%s' defined multiple times " %
-                                        "(in '%s')" % (name, obj_path) )
+                    raise ModelError("Dimension '%s' defined multiple times " % "(in '%s')" % (name, obj_path))
                 model["dimensions"].append(desc)
 
-            elif prefix == 'cube':
+            elif prefix == "cube":
                 desc = _json_from_url(obj_path)
                 try:
                     name = desc["name"]
                 except KeyError:
-                    raise ModelError("Cube file '%s' has no name key" %
-                                                                     obj_path)
+                    raise ModelError("Cube file '%s' has no name key" % obj_path)
                 if name in model["cubes"]:
-                    raise ModelError("Cube '%s' defined multiple times "
-                                        "(in '%s')" % (name, obj_path) )
+                    raise ModelError("Cube '%s' defined multiple times " "(in '%s')" % (name, obj_path))
                 model["cubes"].append(desc)
 
     return model
@@ -172,16 +170,13 @@ def write_model_metadata_bundle(path, metadata, replace=False):
 
     if os.path.exists(path):
         if not os.path.isdir(path):
-            raise CubesError("Target exists and is a file, "
-                                "can not replace")
+            raise CubesError("Target exists and is a file, " "can not replace")
         elif not os.path.exists(os.path.join(path, "model.json")):
-            raise CubesError("Target is not a model directory, "
-                                "can not replace.")
+            raise CubesError("Target is not a model directory, " "can not replace.")
         if replace:
             shutil.rmtree(path)
         else:
-            raise CubesError("Target already exists. "
-                                "Remove it or force replacement.")
+            raise CubesError("Target already exists. " "Remove it or force replacement.")
 
     os.makedirs(path)
 
@@ -213,7 +208,7 @@ def expand_cube_metadata(metadata):
 
     metadata = dict(metadata)
 
-    if not "name" in metadata:
+    if "name" not in metadata:
         raise ModelError("Cube has no name")
 
     links = metadata.get("dimensions", [])
@@ -234,8 +229,7 @@ def expand_cube_metadata(metadata):
             link["hierarchies"] = hiers
 
         if dim_hiers:
-            raise ModelError("There are hierarchies specified for non-linked "
-                             "dimensions: %s." % (dim_hiers.keys()))
+            raise ModelError("There are hierarchies specified for non-linked " "dimensions: %s." % (dim_hiers.keys()))
 
     nonadditive = metadata.pop("nonadditive", None)
     if "measures" in metadata:
@@ -281,11 +275,11 @@ def expand_dimension_metadata(metadata, expand_levels=False):
     """
 
     if isinstance(metadata, compat.string_type):
-        metadata = {"name":metadata, "levels": [metadata]}
+        metadata = {"name": metadata, "levels": [metadata]}
     else:
         metadata = dict(metadata)
 
-    if not "name" in metadata:
+    if "name" not in metadata:
         raise ModelError("Dimension has no name")
 
     name = metadata["name"]
@@ -293,8 +287,7 @@ def expand_dimension_metadata(metadata, expand_levels=False):
     # Fix levels
     levels = metadata.get("levels", [])
     if not levels and expand_levels:
-        attributes = ["attributes", "key", "order_attribute", "order",
-                      "label_attribute"]
+        attributes = ["attributes", "key", "order_attribute", "order", "label_attribute"]
         level = {}
         for attr in attributes:
             if attr in metadata:
@@ -315,8 +308,7 @@ def expand_dimension_metadata(metadata, expand_levels=False):
 
     # Fix hierarchies
     if "hierarchy" in metadata and "hierarchies" in metadata:
-        raise ModelInconsistencyError("Both 'hierarchy' and 'hierarchies'"
-                                      " specified. Use only one")
+        raise ModelInconsistencyError("Both 'hierarchy' and 'hierarchies'" " specified. Use only one")
 
     hierarchy = metadata.get("hierarchy")
     if hierarchy:
@@ -339,10 +331,11 @@ def expand_hierarchy_metadata(metadata):
     except KeyError:
         raise ModelError("Hierarchy has no name")
 
-    if not "levels" in metadata:
+    if "levels" not in metadata:
         raise ModelError("Hierarchy '%s' has no levels" % name)
 
     return metadata
+
 
 def expand_level_metadata(metadata):
     """Returns a level description as a dictionary. If provided as string,
@@ -350,7 +343,7 @@ def expand_level_metadata(metadata):
     dictionary is provided and has no attributes, then level will contain only
     attribute with the same name as the level name."""
     if isinstance(metadata, compat.string_type):
-        metadata = {"name":metadata, "attributes": [metadata]}
+        metadata = {"name": metadata, "attributes": [metadata]}
     else:
         metadata = dict(metadata)
 
@@ -362,10 +355,7 @@ def expand_level_metadata(metadata):
     attributes = metadata.get("attributes")
 
     if not attributes:
-        attribute = {
-            "name": name,
-            "label": metadata.get("label")
-        }
+        attribute = {"name": name, "label": metadata.get("label")}
 
         attributes = [attribute]
 
@@ -389,8 +379,7 @@ def expand_attribute_metadata(metadata):
     return metadata
 
 
-ValidationError = namedtuple("ValidationError",
-                            ["severity", "scope", "object", "property", "message"])
+ValidationError = namedtuple("ValidationError", ["severity", "scope", "object", "property", "message"])
 
 
 def validate_model(metadata):
@@ -398,6 +387,7 @@ def validate_model(metadata):
 
     validator = ModelMetadataValidator(metadata)
     return validator.validate()
+
 
 class ModelMetadataValidator(object):
     def __init__(self, metadata):
@@ -450,11 +440,13 @@ class ModelMetadataValidator(object):
         if dims and isinstance(dims, list):
             for dim in dims:
                 if isinstance(dim, compat.string_type):
-                    err = ValidationError("default", "model", None,
-                                          "dimensions",
-                                          "Dimension '%s' is not described, "
-                                          "creating flat single-attribute "
-                                          "dimension" % dim)
+                    err = ValidationError(
+                        "default",
+                        "model",
+                        None,
+                        "dimensions",
+                        "Dimension '%s' is not described, " "creating flat single-attribute " "dimension" % dim,
+                    )
                     errors.append(err)
 
         return errors
@@ -472,20 +464,23 @@ class ModelMetadataValidator(object):
         errors = self._collect_errors("dimension", name, validator, dim)
 
         if "default_hierarchy_name" not in dim:
-            error = ValidationError("default", "dimension", name, None,
-                                    "No default hierarchy name specified, "
-                                    "using first one")
+            error = ValidationError(
+                "default", "dimension", name, None, "No default hierarchy name specified, " "using first one"
+            )
             errors.append(error)
 
         if "levels" not in dim and "attributes" not in dim:
-            error = ValidationError("default", "dimension", name, None,
-                                    "Neither levels nor attributes specified, "
-                                    "creating flat dimension without details")
+            error = ValidationError(
+                "default",
+                "dimension",
+                name,
+                None,
+                "Neither levels nor attributes specified, " "creating flat dimension without details",
+            )
             errors.append(error)
 
         elif "levels" in dim and "attributes" in dim:
-            error = ValidationError("error", "dimension", name, None,
-                                    "Both levels and attributes specified")
+            error = ValidationError("error", "dimension", name, None, "Both levels and attributes specified")
             errors.append(error)
 
         return errors

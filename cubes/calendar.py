@@ -9,20 +9,15 @@ from dateutil.relativedelta import relativedelta
 from dateutil.relativedelta import MO, TU, WE, TH, FR, SA, SU
 from dateutil.tz import gettz, tzlocal, tzstr
 from datetime import datetime
-from time import gmtime
 
 from .model import Hierarchy
 from .errors import ArgumentError, ConfigurationError
 from . import compat
 
-__all__ = (
-    "Calendar",
-    "calendar_hierarchy_units"
-)
+__all__ = ("Calendar", "calendar_hierarchy_units")
 
 
-_CALENDAR_UNITS = ["year", "quarter", "month", "day", "hour", "minute",
-                    "weekday"]
+_CALENDAR_UNITS = ["year", "quarter", "month", "day", "hour", "minute", "weekday"]
 
 
 UNIT_YEAR = 8
@@ -43,31 +38,21 @@ _UNIT_ORDER = {
     "day": UNIT_DAY,
     "hour": UNIT_HOUR,
     "minute": UNIT_MINUTE,
-    "second": UNIT_SECOND
+    "second": UNIT_SECOND,
 }
 
-_DATEUTIL_WEEKDAYS = { 0: MO, 1: TU, 2: WE, 3: TH, 4: FR, 5: SA, 6: SU }
+_DATEUTIL_WEEKDAYS = {0: MO, 1: TU, 2: WE, 3: TH, 4: FR, 5: SA, 6: SU}
 
-_WEEKDAY_NUMBERS = {
-    "monday": 0,
-    "tuesday": 1,
-    "wednesday": 2,
-    "thursday": 3,
-    "friday": 4,
-    "saturday": 5,
-    "sunday": 6
-}
+_WEEKDAY_NUMBERS = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6}
 
-RELATIVE_FINE_TIME_RX = re.compile(r"(?P<offset>\d+)?"
-                                    "(?P<unit>\w+)"
-                                    "(?P<direction>(ago|forward))")
+RELATIVE_FINE_TIME_RX = re.compile(r"(?P<offset>\d+)?" "(?P<unit>\w+)" "(?P<direction>(ago|forward))")
 
 
-RELATIVE_TRUNCATED_TIME_RX = re.compile(r"(?P<direction>(last|next))"
-                                         "(?P<offset>\d+)?"
-                                         "(?P<unit>\w+)")
+RELATIVE_TRUNCATED_TIME_RX = re.compile(r"(?P<direction>(last|next))" "(?P<offset>\d+)?" "(?P<unit>\w+)")
 
-month_to_quarter = lambda month: ((month - 1) // 3) + 1
+
+def month_to_quarter(month):
+    return ((month - 1) // 3) + 1
 
 
 def calendar_hierarchy_units(hierarchy):
@@ -89,8 +74,7 @@ def calendar_hierarchy_units(hierarchy):
         if role in _CALENDAR_UNITS:
             units.append(role)
         else:
-            raise ArgumentError("Unknown time role '%s' for level '%s'"
-                                % (role, str(level)))
+            raise ArgumentError("Unknown time role '%s' for level '%s'" % (role, str(level)))
 
     return units
 
@@ -99,18 +83,18 @@ def add_time_units(time, unit, amount):
     """Subtract `amount` number of `unit`s from datetime object `time`."""
 
     args = {}
-    if unit == 'hour':
-        args['hours'] = amount
-    elif unit == 'day':
-        args['days'] = amount
-    elif unit == 'week':
-        args['days'] = amount * 7
-    elif unit == 'month':
-        args['months'] = amount
-    elif unit == 'quarter':
-        args['months'] = amount * 3
-    elif unit == 'year':
-        args['years'] = amount
+    if unit == "hour":
+        args["hours"] = amount
+    elif unit == "day":
+        args["days"] = amount
+    elif unit == "week":
+        args["days"] = amount * 7
+    elif unit == "month":
+        args["months"] = amount
+    elif unit == "quarter":
+        args["months"] = amount * 3
+    elif unit == "year":
+        args["years"] = amount
     else:
         raise ArgumentError("Unknown unit %s for subtraction.")
 
@@ -129,13 +113,11 @@ class Calendar(object):
             try:
                 self.first_weekday = _WEEKDAY_NUMBERS[first_weekday.lower()]
             except KeyError:
-                raise ConfigurationError("Unknown weekday name %s" %
-                                         first_weekday)
+                raise ConfigurationError("Unknown weekday name %s" % first_weekday)
         else:
             value = int(first_weekday)
             if value < 0 or value >= 7:
-                raise ConfigurationError("Invalid weekday number %s" %
-                                         value)
+                raise ConfigurationError("Invalid weekday number %s" % value)
             self.first_weekday = int(first_weekday)
 
         if timezone:
@@ -169,7 +151,7 @@ class Calendar(object):
             elif unit == "weekday":
                 value = (time.weekday() - self.first_weekday) % 7
             else:
-                raise ArgumentError("Unknown calendar unit '%s'" % (unit, ))
+                raise ArgumentError("Unknown calendar unit '%s'" % (unit,))
             path.append(value)
 
         return path
@@ -194,26 +176,26 @@ class Calendar(object):
         elif unit_order > UNIT_SECOND:
             time = time.replace(second=0)
 
-        if unit == 'hour':
+        if unit == "hour":
             pass
 
-        elif unit == 'day':
+        elif unit == "day":
             time = time.replace(hour=0)
 
-        elif unit == 'week':
+        elif unit == "week":
             time = time.replace(hour=0)
 
             weekday = _DATEUTIL_WEEKDAYS[self.first_weekday]
             time = time + relativedelta(days=-6, weekday=weekday)
 
-        elif unit == 'month':
+        elif unit == "month":
             time = time.replace(day=1, hour=0)
 
-        elif unit == 'quarter':
+        elif unit == "quarter":
             month = (month_to_quarter(time.month) - 1) * 3 + 1
             time = time.replace(month=month, day=1, hour=0)
 
-        elif unit == 'year':
+        elif unit == "year":
             time = time.replace(month=1, day=1, hour=0)
 
         else:
@@ -269,8 +251,7 @@ class Calendar(object):
                 try:
                     offset = int(offset)
                 except ValueError:
-                    raise ArgumentError("Relative time offset should be a "
-                                        "number")
+                    raise ArgumentError("Relative time offset should be a " "number")
             else:
                 offset = 1
 
@@ -314,4 +295,3 @@ class CalendarMemberConverter(object):
             return [value]
 
         return path
-

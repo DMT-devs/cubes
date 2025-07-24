@@ -10,6 +10,7 @@ __all__ = [
     "Namespace",
 ]
 
+
 class Namespace(object):
     def __init__(self, name=None, parent=None):
         """Creates a cubes namespace – an object that provides model objects
@@ -42,7 +43,7 @@ class Namespace(object):
 
         namespace = self
         for i, element in enumerate(path):
-            remainder = path[i+1:]
+            remainder = path[i + 1:]
             if element in namespace.namespaces:
                 namespace = namespace.namespaces[element]
                 found = True
@@ -107,11 +108,9 @@ class Namespace(object):
             provider = None
 
         if not provider:
-            raise NoSuchCubeError("Unknown cube '{}'".format(cube_ref),
-                                  cube_ref)
+            raise NoSuchCubeError("Unknown cube '{}'".format(cube_ref), cube_ref)
 
         return (namespace, provider, basename)
-
 
     def list_cubes(self, recursive=False):
         """Retursn a list of cube info dictionaries with keys: `name`,
@@ -147,8 +146,7 @@ class Namespace(object):
         for provider in self.providers:
             # TODO: use locale
             try:
-                dim = provider.dimension(name, locale=locale,
-                                         templates=templates)
+                dim = provider.dimension(name, locale=locale, templates=templates)
             except NoSuchDimensionError:
                 pass
             else:
@@ -195,4 +193,3 @@ class Namespace(object):
             ns = ns.parent
 
         return lookup
-

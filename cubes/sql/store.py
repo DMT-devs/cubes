@@ -3,16 +3,15 @@ import configparser
 from typing import Optional
 
 try:
-    from sqlalchemy import (
-        create_engine, MetaData, Table, Column, String, Index,
-        inspect, text, exc
-    )
+    from sqlalchemy import create_engine, MetaData, Table, Column, String, Index, inspect, text, exc
     from sqlalchemy.engine.url import make_url
     from sqlalchemy.orm import Session
 except ImportError:
     from ..common import MissingPackage
 
-    create_engine = MetaData = Table = Column = String = Index = inspect = text = exc = make_url = Session = MissingPackage("sqlalchemy", "SQL")
+    create_engine = MetaData = Table = Column = String = Index = inspect = text = exc = make_url = Session = (
+        MissingPackage("sqlalchemy", "SQL")
+    )
 
 from .browser import SQLBrowser
 from .mapper import distill_naming, Naming
@@ -57,28 +56,24 @@ OPTION_TYPES = {
 
 
 def sqlalchemy_options(options, prefix="sqlalchemy_"):
-    """
-    Adapta opciones de configuración para `create_engine()` en SQLAlchemy 2.x.
-    Elimina el prefijo y transforma los valores usando `coalesce_options`.
-    """
+    """Return converted `options` to match SQLAlchemy create_engine options
+    and their types. The `options` are expected to have prefix
+    ``sqlalchemy_``, which will be removed."""
     future_safe_keys = [
-        "echo", "label_length", "max_overflow", "pool_size",
-        "pool_recycle", "pool_timeout", "case_sensitive", "case_insensitive"
+        "echo",
+        "label_length",
+        "max_overflow",
+        "pool_size",
+        "pool_recycle",
+        "pool_timeout",
+        "case_sensitive",
+        "case_insensitive",
     ]
 
-    sa_options = {
-        key[len(prefix):]: options.pop(key)
-        for key in list(options)
-        if key.startswith(prefix)
-    }
+    sa_options = {key[len(prefix) :]: options.pop(key) for key in list(options) if key.startswith(prefix)}
+    sa_options = {key: value for key, value in sa_options.items() if key in future_safe_keys}
 
-    # Depurar claves obsoletas o no válidas en SQLAlchemy 2.x
-    sa_options = {
-        key: value for key, value in sa_options.items()
-        if key in future_safe_keys
-    }
-
-    # Activar modo moderno
+    # Active modern mode
     sa_options["future"] = True
 
     return coalesce_options(sa_options, SQLALCHEMY_OPTION_TYPES)
@@ -94,8 +89,7 @@ class SQLStore(Store):
         "Relational database store.\n\n"
         "Supported database engines: firebird, mssql, mysql, oracle, postgresql, sqlite, sybase.\n\n"
         "Naming Convention\n"
-        "-----------------\n"
-        + Naming.__doc__ + "\n"
+        "-----------------\n" + Naming.__doc__ + "\n"
         "Engine Options\n"
         "--------------\n"
         "Options to be passed to SQLAlchemy create_engine start with prefix `sqlalchemy_`.\n"
@@ -149,9 +143,7 @@ class SQLStore(Store):
         super(SQLStore, self).__init__(**options)
 
         if not engine and not url:
-            raise ConfigurationError(
-                "No URL or engine specified in options, provide at least one"
-            )
+            raise ConfigurationError("No URL or engine specified in options, provide at least one")
         if engine and url:
             raise ConfigurationError("Both engine and URL specified. Use only one.")
 
@@ -195,13 +187,8 @@ class SQLStore(Store):
         unless `force` is ``True``"""
 
         view_name = str(table)
-        preparer = self.connectable.dialect.preparer.identifier_preparer
+        preparer = self.connectable.dialect.identifier_preparer
         full_name = preparer.format_table(table)
-
-        if table.exists(self.connectable) and not force:
-            raise StoreError(
-                "View or table %s (schema: %s) already exists." % (view_name, schema)
-            )
 
         inspector = inspect(self.connectable)
         view_names = inspector.get_view_names(schema=schema)
@@ -255,9 +242,7 @@ class SQLStore(Store):
             detail_alias = (join.detail.schema, join.alias or join.detail.table)
 
             if detail_alias in aliases:
-                issues.append(
-                    ("join", "duplicate detail table %s" % detail_table, join)
-                )
+                issues.append(("join", "duplicate detail table %s" % detail_table, join))
             else:
                 aliases.add(detail_alias)
 
@@ -278,18 +263,11 @@ class SQLStore(Store):
         physical_tables = {}
 
         # Add fact table to support simple attributes
-        physical_tables[(self.fact_table.schema, self.fact_table.name)] = (
-            self.fact_table
-        )
+        physical_tables[(self.fact_table.schema, self.fact_table.name)] = self.fact_table
         for schema_name, table_name in tables:
             schema = schema_name or self.mapper.schema
         try:
-            physical_table = Table(
-                table_name,
-                self.metadata,
-                schema=schema,
-                autoload_with=self.connectable
-            )
+            physical_table = Table(table_name, self.metadata, schema=schema, autoload_with=self.connectable)
             physical_tables[(schema, table_name)] = physical_table
         except exc.NoSuchTableError:
             issues.append(("join", f"table {schema}.{table_name} does not exist", join))
@@ -366,16 +344,12 @@ class SQLStore(Store):
         browser = SQLBrowser(cube, self, schema=schema)
 
         if browser.safe_labels:
-            raise ConfigurationError(
-                "Denormalization does not work with " "safe_labels turned on"
-            )
+            raise ConfigurationError("Denormalization does not work with " "safe_labels turned on")
 
         # Note: this does not work with safe labels – since they are "safe"
         # they can not conform to the cubes implicit naming schema dim.attr
 
-        (statement, _) = browser.denormalized_statement(
-            attributes, include_fact_key=True
-        )
+        (statement, _) = browser.denormalized_statement(attributes, include_fact_key=True)
 
         schema = schema or self.naming.schema
         view_name = view_name or self.naming.denormalized_table_name(cube.name)
@@ -383,35 +357,25 @@ class SQLStore(Store):
         fact_name = cube.fact or self.naming.fact_table_name(cube.name)
 
         if fact_name == view_name and schema == self.naming.schema:
-            raise StoreError(
-                "target denormalized view is the same as source fact table"
-            )
+            raise StoreError("target denormalized view is the same as source fact table")
 
         table = Table(view_name, self.metadata, schema=schema)
+        inspector = inspect(self.connectable)
         view_names = inspector.get_view_names(schema=schema)
         table_names = inspector.get_table_names(schema=schema)
 
         if view_name in view_names or view_name in table_names:
             self._drop_table(table, schema, force=replace)
 
-        create_view = (
-            CreateTableAsSelect(table, statement) if materialize
-            else CreateOrReplaceView(table, statement)
-        )
+        create_view = CreateTableAsSelect(table, statement) if materialize else CreateOrReplaceView(table, statement)
 
-        self.logger.info(
-            "creating denormalized view %s (materialized: %s)"
-            % (str(table), materialize)
-        )
+        self.logger.info("creating denormalized view %s (materialized: %s)" % (str(table), materialize))
         # print("SQL statement:\n%s" % statement)
         self.execute(create_view)
         if create_index:
             if not materialize:
                 raise ConfigurationError("Indexes can only be created on materialized views")
             table = Table(view_name, self.metadata, schema=schema, autoload_with=self.connectable)
-
-            insp = reflection.Inspector.from_engine(engine)
-            insp.reflecttable(table, None)
 
             for attribute in attributes:
                 label = attribute.ref
@@ -422,11 +386,13 @@ class SQLStore(Store):
                 with self.connectable.connect() as conn:
                     index.create(conn)
 
-
     def execute(self, statement):
-        with Session(self.connectable) as session:
-            return session.execute(statement)
-
+        with self.connectable.connect() as connection:
+            result = connection.execute(statement)
+            try:
+                return result.fetchall()
+            except Exception:
+                return result
 
     def validate_model(self):
         issues = []
@@ -434,7 +400,6 @@ class SQLStore(Store):
             browser = self.browser(cube)
             issues += browser.validate()
         return issues
-
 
     ########################################################################
     ########################################################################
@@ -456,9 +421,7 @@ class SQLStore(Store):
         * UNIQUE level key: join might be based on level key
     """
 
-    def create_conformed_rollup(
-        self, cube, dimension, level=None, hierarchy=None, replace=False, **options
-    ):
+    def create_conformed_rollup(self, cube, dimension, level=None, hierarchy=None, replace=False, **options):
         """Extracts dimension values at certain level into a separate table.
         The new table name will be composed of `dimension_prefix`, dimension
         name and suffixed by dimension level. For example a product dimension
@@ -498,9 +461,7 @@ class SQLStore(Store):
         for level in levels:
             attributes.extend(level.attributes)
 
-        statement = context.denormalized_statement(
-            attributes=attributes, include_fact_key=False
-        )
+        statement = context.denormalized_statement(attributes=attributes, include_fact_key=False)
 
         group_by = [context.column(attr) for attr in attributes]
         statement = statement.group_by(*group_by)
@@ -511,9 +472,7 @@ class SQLStore(Store):
             str(dimension),
             str(level),
         )
-        self.create_table_from_statement(
-            table_name, statement, schema, replace, insert=True
-        )
+        self.create_table_from_statement(table_name, statement, schema, replace, insert=True)
 
     def create_conformed_rollups(
         self,
@@ -553,10 +512,7 @@ class SQLStore(Store):
                     replace=replace,
                 )
 
-
-    def create_table_from_statement(
-        self, table_name, statement, schema, replace=False, insert=False
-    ):
+    def create_table_from_statement(self, table_name, statement, schema, replace=False, insert=False):
         """Creates or replaces a table from statement.
 
         Arguments:
@@ -581,11 +537,7 @@ class SQLStore(Store):
 
         for col in statement.columns:
             # mysql backend requires default string length
-            if (
-                self.connectable.name == "mysql"
-                and isinstance(col.type, String)
-                and not col.type.length
-            ):
+            if self.connectable.name == "mysql" and isinstance(col.type, String) and not col.type.length:
                 col_type = String(255)
             else:
                 col_type = col.type
@@ -624,9 +576,7 @@ class SQLStore(Store):
         browser = SQLBrowser(cube, self, schema=schema)
 
         if browser.safe_labels:
-            raise ConfigurationError(
-                "Aggregation does not work with " "safe_labels turned on"
-            )
+            raise ConfigurationError("Aggregation does not work with " "safe_labels turned on")
 
         schema = schema or self.naming.aggregate_schema or self.naming.schema
 
@@ -646,21 +596,17 @@ class SQLStore(Store):
             hierarchy = dimension.hierarchy(hiername)
             levels = hierarchy.levels
             drilldown.append((dimension, hierarchy, levels[-1]))
-            keys += [l.key for l in levels]
+            keys += [lev.key for lev in levels]
 
         cell = Cell(cube)
         drilldown = Drilldown(drilldown, cell)
 
         # Create statement of all dimension level keys for
         # getting structure for table creation
-        (statement, _) = browser.aggregation_statement(
-            cell, drilldown=drilldown, aggregates=cube.aggregates
-        )
+        (statement, _) = browser.aggregation_statement(cell, drilldown=drilldown, aggregates=cube.aggregates)
 
         # Create table
-        table = self.create_table_from_statement(
-            table_name, statement, schema=schema, replace=replace, insert=False
-        )
+        table = self.create_table_from_statement(table_name, statement, schema=schema, replace=replace, insert=False)
 
         self.logger.info("Inserting...")
 
@@ -679,7 +625,8 @@ class SQLStore(Store):
                 name = "%s_%s_idx" % (table_name, column)
                 self.logger.info("creating index: %s" % name)
                 index = Index(name, column)
-                index.create(self.connectable)
+                with self.connectable.connect() as conn:
+                    index.create(conn)
 
         self.logger.info("Done")
 

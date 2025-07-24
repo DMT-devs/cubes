@@ -5,14 +5,14 @@ import collections
 
 from .logging import get_logger
 
-__all__ = (
-    "Mapper",
-)
+__all__ = ("Mapper",)
+
 
 class Mapper(object):
     """Mapper is core class for translating logical model to physical database
     schema.
     """
+
     # WARNING: do not put any SQL/engine/connection related stuff into this
     # class yet. It might be moved to the cubes as one of top-level modules
     # and subclassed here.
@@ -70,7 +70,7 @@ class Mapper(object):
 
     # TODO: depreciate in favor of Cube.attribute
     def attribute(self, name):
-        """Returns an attribute with logical reference `name`. """
+        """Returns an attribute with logical reference `name`."""
         # TODO: If attribute is not found, returns `None` (yes or no?)
 
         return self.attributes[name]
@@ -116,4 +116,3 @@ class Mapper(object):
         """
 
         return self.mappings.get(self.logical(attribute, locale))
-

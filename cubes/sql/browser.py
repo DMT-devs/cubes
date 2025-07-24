@@ -91,8 +91,7 @@ class SQLBrowser(AggregationBrowser):
         {"name": "use_denormalization", "type": "bool"},
         {
             "name": "safe_labels",
-            "description": "Use internally SQL statement column labels "
-            "without special characters",
+            "description": "Use internally SQL statement column labels " "without special characters",
             "type": "bool",
         },
     ]
@@ -120,9 +119,7 @@ class SQLBrowser(AggregationBrowser):
         else:
             self.connectable = store
 
-            metadata = kwargs.get(
-                "metadata", sqlalchemy.MetaData(bind=self.connectable)
-            )
+            metadata = kwargs.get("metadata", sqlalchemy.MetaData())
 
         # Options
         # -------
@@ -155,16 +152,11 @@ class SQLBrowser(AggregationBrowser):
         else:
             mapper = StarSchemaMapper
 
-        self.logger.debug(
-            "using mapper %s for cube '%s' (locale: %s)"
-            % (str(mapper.__name__), cube.name, locale)
-        )
+        self.logger.debug("using mapper %s for cube '%s' (locale: %s)" % (str(mapper.__name__), cube.name, locale))
 
         # Prepare the mappings of base attributes
         naming = distill_naming(options)
-        (fact_name, mappings) = map_base_attributes(
-            cube, mapper, naming=naming, locale=locale
-        )
+        (fact_name, mappings) = map_base_attributes(cube, mapper, naming=naming, locale=locale)
 
         tables = options.get("tables")
 
@@ -214,9 +206,7 @@ class SQLBrowser(AggregationBrowser):
 
         Number of SQL queries: 1."""
 
-        (statement, labels) = self.denormalized_statement(
-            attributes=fields, include_fact_key=True
-        )
+        (statement, labels) = self.denormalized_statement(attributes=fields, include_fact_key=True)
         condition = statement.columns[FACT_KEY_LABEL] == key_value
         statement = statement.where(condition)
 
@@ -253,9 +243,7 @@ class SQLBrowser(AggregationBrowser):
         attrs = self.cube.get_attributes(fields)
         cell = cell or Cell(self.cube)
 
-        (statement, labels) = self.denormalized_statement(
-            cell=cell, attributes=attrs, include_fact_key=True
-        )
+        (statement, labels) = self.denormalized_statement(cell=cell, attributes=attrs, include_fact_key=True)
 
         if fact_list is not None:
             in_condition = self.star.fact_key_column.in_(fact_list)
@@ -343,9 +331,7 @@ class SQLBrowser(AggregationBrowser):
         for level in hierarchy.levels[0 : len(path)]:
             attributes += level.attributes
 
-        (statement, labels) = self.denormalized_statement(
-            attributes, cell, include_fact_key=True
-        )
+        (statement, labels) = self.denormalized_statement(attributes, cell, include_fact_key=True)
         statement = statement.limit(1)
         cursor = self.execute(statement, "path details")
 
@@ -365,9 +351,7 @@ class SQLBrowser(AggregationBrowser):
         with self.connectable.connect() as conn:
             return conn.execute(statement)
 
-    def provide_aggregate(
-        self, cell, aggregates, drilldown, split, order, page, page_size, **options
-    ):
+    def provide_aggregate(self, cell, aggregates, drilldown, split, order, page, page_size, **options):
         """Return aggregated result.
 
         Arguments:
@@ -470,11 +454,7 @@ class SQLBrowser(AggregationBrowser):
         # If exclude_null_aggregates is True then don't include cells where
         # at least one of the bult-in aggregates is NULL
         if result.cells is not None and self.exclude_null_agregates:
-            native_aggs = [
-                agg.ref
-                for agg in aggregates
-                if agg.function and self.is_builtin_function(agg.function)
-            ]
+            native_aggs = [agg.ref for agg in aggregates if agg.function and self.is_builtin_function(agg.function)]
             result.exclude_if_null = native_aggs
 
         return result
@@ -492,9 +472,7 @@ class SQLBrowser(AggregationBrowser):
             safe_labels=self.safe_labels,
         )
 
-    def denormalized_statement(
-        self, attributes=None, cell=None, include_fact_key=False
-    ):
+    def denormalized_statement(self, attributes=None, cell=None, include_fact_key=False):
         """Returns a tuple (`statement`, `labels`) representing denormalized
         star statement restricted by `cell`. If `attributes` is not specified,
         then all cube's attributes are selected. The returned `labels` are
@@ -530,9 +508,7 @@ class SQLBrowser(AggregationBrowser):
     #
     # This is the reason of our whole existence.
     #
-    def aggregation_statement(
-        self, cell, aggregates, drilldown=None, split=None, for_summary=False
-    ):
+    def aggregation_statement(self, cell, aggregates, drilldown=None, split=None, for_summary=False):
         """Builds a statement to aggregate the `cell` and reutrns a tuple
         (`statement`, `labels`). `statement` is a SQLAlchemy statement object,
         `labels` is a list of attribute names selected in the statement. The
@@ -557,10 +533,7 @@ class SQLBrowser(AggregationBrowser):
             raise ArgumentError("List of aggregates should not be empty")
 
         if not isinstance(drilldown, Drilldown):
-            raise InternalError(
-                "Drilldown should be a Drilldown object. "
-                "Is '{}'".format(type(drilldown))
-            )
+            raise InternalError("Drilldown should be a Drilldown object. " "Is '{}'".format(type(drilldown)))
 
         # 1. Gather attributes
         #
@@ -651,9 +624,7 @@ class ResultIterator(object):
 
             row = self.batch.popleft()
 
-            if self.exclude_if_null and any(
-                row[agg] is None for agg in self.exclude_if_null
-            ):
+            if self.exclude_if_null and any(row[agg] is None for agg in self.exclude_if_null):
                 continue
 
             yield dict(zip(self.labels, row))

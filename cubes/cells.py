@@ -19,7 +19,6 @@ __all__ = [
     "PointCut",
     "RangeCut",
     "SetCut",
-
     "cuts_from_string",
     "string_from_cuts",
     "string_from_path",
@@ -30,15 +29,15 @@ __all__ = [
 ]
 
 
-NULL_PATH_VALUE = '__null__'
+NULL_PATH_VALUE = "__null__"
 
 
 class Cell(object):
     """Part of a cube determined by slicing dimensions. Immutable object."""
+
     def __init__(self, cube=None, cuts=None):
         if not isinstance(cube, Cube):
-            raise ArgumentError("Cell cube should be sublcass of Cube, "
-                                "provided: %s" % type(cube).__name__)
+            raise ArgumentError("Cell cube should be sublcass of Cube, " "provided: %s" % type(cube).__name__)
         self.cube = cube
         self.cuts = cuts if cuts is not None else []
 
@@ -46,18 +45,15 @@ class Cell(object):
         """Returns a new cell that is a conjunction of the two provided
         cells. The cube has to match."""
         if self.cube != other.cube:
-            raise ArgumentError("Can not combine two cells from different "
-                                "cubes '%s' and '%s'."
-                                % (self.cube.name, other.cube.name))
+            raise ArgumentError(
+                "Can not combine two cells from different " "cubes '%s' and '%s'." % (self.cube.name, other.cube.name)
+            )
         cuts = self.cuts + other.cuts
         return Cell(self.cube, cuts=cuts)
 
     def to_dict(self):
         """Returns a dictionary representation of the cell"""
-        result = {
-            "cube": str(self.cube.name),
-            "cuts": [cut.to_dict() for cut in self.cuts]
-        }
+        result = {"cube": str(self.cube.name), "cuts": [cut.to_dict() for cut in self.cuts]}
 
         return result
 
@@ -83,7 +79,6 @@ class Cell(object):
     def key_attributes(self):
         return self.all_attributes
 
-
     def slice(self, cut):
         """Returns new cell by slicing receiving cell with `cut`. Cut with
         same dimension as `cut` will be replaced, if there is no cut with the
@@ -92,9 +87,11 @@ class Cell(object):
 
         # Fix for wrong early design decision:
         if isinstance(cut, Dimension) or isinstance(cut, compat.string_type):
-            raise CubesError("slice() should now be called with a cut (since v0.9.2). To get "
-                             "original behaviour of one-dimension point cut, "
-                             "use cell.slice(PointCut(dim,path))")
+            raise CubesError(
+                "slice() should now be called with a cut (since v0.9.2). To get "
+                "original behaviour of one-dimension point cut, "
+                "use cell.slice(PointCut(dim,path))"
+            )
 
         cuts = self.cuts[:]
         index = self._find_dimension_cut(cut.dimension)
@@ -297,8 +294,9 @@ class Cell(object):
                     continue
                 #     raise ValueError("No cut to roll-up for dimension '%s'" % dim_name)
                 if isinstance(cut, PointCut):
-                    raise NotImplementedError("Only PointCuts are currently supported for "
-                                              "roll-up (rollup dimension: %s)" % dim_name)
+                    raise NotImplementedError(
+                        "Only PointCuts are currently supported for " "roll-up (rollup dimension: %s)" % dim_name
+                    )
 
                 dim = self.cube.dimension(cut.dimension)
                 hier = dim.default_hierarchy
@@ -309,13 +307,14 @@ class Cell(object):
                 new_cuts.append(cut)
 
         elif isinstance(self.drilldown, dict):
-            for (dim_name, level_name) in rollup.items():
+            for dim_name, level_name in rollup.items():
                 cut = cuts[dim_name]
                 if not cut:
                     raise ArgumentError("No cut to roll-up for dimension '%s'" % dim_name)
-                if type(cut) != PointCut:
-                    raise NotImplementedError("Only PointCuts are currently supported for "
-                                              "roll-up (rollup dimension: %s)" % dim_name)
+                if not isinstance(cut, PointCut):
+                    raise NotImplementedError(
+                        "Only PointCuts are currently supported for " "roll-up (rollup dimension: %s)" % dim_name
+                    )
 
                 dim = self.cube.dimension(cut.dimension)
                 hier = dim.default_hierarchy
@@ -325,8 +324,7 @@ class Cell(object):
                 cut = PointCut(cut.dimension, rollup_path)
                 new_cuts.append(cut)
         else:
-            raise ArgumentError("Rollup is of unknown type: %s" %
-                                type(self.drilldown))
+            raise ArgumentError("Rollup is of unknown type: %s" % type(self.drilldown))
 
         cell = Cell(cube=self.cube, cuts=new_cuts)
         return cell
@@ -366,7 +364,7 @@ class Cell(object):
             dim = self.cube.dimension(cut.dimension)
             hier = dim.hierarchy(cut.hierarchy)
             if depth:
-                item = (dim, hier, hier[depth-1])
+                item = (dim, hier, hier[depth - 1])
             elif include_empty:
                 item = (dim, hier, None)
             levels.append(item)
@@ -412,8 +410,7 @@ class Cell(object):
         cuts = []
         for cut in self.cuts:
             cut_dimension = self.cube.dimension(cut.dimension)
-            if (exclude and cut_dimension != dimension) \
-                    or (not exclude and cut_dimension == dimension):
+            if (exclude and cut_dimension != dimension) or (not exclude and cut_dimension == dimension):
                 cuts.append(cut)
         return cuts
 
@@ -428,8 +425,8 @@ class Cell(object):
 
     def __eq__(self, other):
         """cells are considered equal if:
-            * they refer to the same cube
-            * they have same set of cuts (regardless of their order)
+        * they refer to the same cube
+        * they have same set of cuts (regardless of their order)
         """
 
         if self.cube != other.cube:
@@ -457,11 +454,12 @@ class Cell(object):
         return string_from_cuts(self.cuts)
 
     def __repr__(self):
-        return 'Cell(%s: %s)' % (str(self.cube), self.to_str() or 'All')
+        return "Cell(%s: %s)" % (str(self.cube), self.to_str() or "All")
 
     def __nonzero__(self):
         """Returns `True` if the cell contains cuts."""
         return bool(self.cuts)
+
 
 CUT_STRING_SEPARATOR_CHAR = "|"
 DIMENSION_STRING_SEPARATOR_CHAR = ":"
@@ -469,11 +467,11 @@ PATH_STRING_SEPARATOR_CHAR = ","
 RANGE_CUT_SEPARATOR_CHAR = "-"
 SET_CUT_SEPARATOR_CHAR = ";"
 
-CUT_STRING_SEPARATOR = re.compile(r'(?<!\\)\|')
-DIMENSION_STRING_SEPARATOR = re.compile(r'(?<!\\):')
-PATH_STRING_SEPARATOR = re.compile(r'(?<!\\),')
-RANGE_CUT_SEPARATOR = re.compile(r'(?<!\\)-')
-SET_CUT_SEPARATOR = re.compile(r'(?<!\\);')
+CUT_STRING_SEPARATOR = re.compile(r"(?<!\\)\|")
+DIMENSION_STRING_SEPARATOR = re.compile(r"(?<!\\):")
+PATH_STRING_SEPARATOR = re.compile(r"(?<!\\),")
+RANGE_CUT_SEPARATOR = re.compile(r"(?<!\\)-")
+SET_CUT_SEPARATOR = re.compile(r"(?<!\\);")
 
 PATH_ELEMENT = r"(?:\\.|[^:;|-])*"
 
@@ -490,8 +488,7 @@ set: date:2004;2010;2011,04
 """
 
 
-def cuts_from_string(cube, string, member_converters=None,
-                     role_member_converters=None):
+def cuts_from_string(cube, string, member_converters=None, role_member_converters=None):
     """Return list of cuts specified in `string`. You can use this function to
     parse cuts encoded in a URL.
 
@@ -543,16 +540,13 @@ def cuts_from_string(cube, string, member_converters=None,
 
     dim_cuts = CUT_STRING_SEPARATOR.split(string)
     for dim_cut in dim_cuts:
-        cut = cut_from_string(dim_cut, cube, member_converters,
-                              role_member_converters)
+        cut = cut_from_string(dim_cut, cube, member_converters, role_member_converters)
         cuts.append(cut)
 
     return cuts
 
 
-
-def cut_from_string(string, cube=None, member_converters=None,
-                    role_member_converters=None):
+def cut_from_string(string, cube=None, member_converters=None, role_member_converters=None):
     """Returns a cut from `string` with dimension `dimension and assumed
     hierarchy `hierarchy`. The string should match one of the following
     patterns:
@@ -571,8 +565,7 @@ def cut_from_string(string, cube=None, member_converters=None,
     member_converters = member_converters or {}
     role_member_converters = role_member_converters or {}
 
-    dim_hier_pattern = re.compile(r"(?P<invert>!)?"
-                                  "(?P<dim>\w+)(@(?P<hier>\w+))?")
+    dim_hier_pattern = re.compile(r"(?P<invert>!)?" "(?P<dim>\w+)(@(?P<hier>\w+))?")
 
     try:
         (dimspec, string) = DIMENSION_STRING_SEPARATOR.split(string)
@@ -583,12 +576,11 @@ def cut_from_string(string, cube=None, member_converters=None,
 
     if match:
         d = match.groupdict()
-        invert = (not not d["invert"])
+        invert = not not d["invert"]
         dimension = d["dim"]
         hierarchy = d["hier"]
     else:
-        raise ArgumentError("Dimension spec '%s' does not match "
-                            "pattern 'dimension@hierarchy'" % dimspec)
+        raise ArgumentError("Dimension spec '%s' does not match " "pattern 'dimension@hierarchy'" % dimspec)
 
     converter = member_converters.get(dimension)
     if cube:
@@ -599,8 +591,8 @@ def cut_from_string(string, cube=None, member_converters=None,
 
     # special case: completely empty string means single path element of ''
     # FIXME: why?
-    if string == '':
-        return PointCut(dimension, [''], hierarchy, invert)
+    if string == "":
+        return PointCut(dimension, [""], hierarchy, invert)
 
     elif RE_POINT.match(string):
         path = path_from_string(string)
@@ -621,8 +613,7 @@ def cut_from_string(string, cube=None, member_converters=None,
         cut = SetCut(dimension, paths, hierarchy, invert)
 
     elif RE_RANGE.match(string):
-        (from_path, to_path) = list(map(path_from_string,
-                                        RANGE_CUT_SEPARATOR.split(string)))
+        (from_path, to_path) = list(map(path_from_string, RANGE_CUT_SEPARATOR.split(string)))
 
         if converter:
             from_path = converter(dimension, hierarchy, from_path)
@@ -631,11 +622,14 @@ def cut_from_string(string, cube=None, member_converters=None,
         cut = RangeCut(dimension, from_path, to_path, hierarchy, invert)
 
     else:
-        raise ArgumentError("Unknown cut format (check that keys "
-                            "consist only of alphanumeric characters and "
-                            "underscore): %s" % string)
+        raise ArgumentError(
+            "Unknown cut format (check that keys "
+            "consist only of alphanumeric characters and "
+            "underscore): %s" % string
+        )
 
     return cut
+
 
 def cut_from_dict(desc, cube=None):
     """Returns a cut from `desc` dictionary. If `cube` is specified, then the
@@ -650,12 +644,11 @@ def cut_from_dict(desc, cube=None):
         dim = cube.dimension(dim)
 
     if cut_type == "point":
-        return PointCut(dim, desc.get("path"), desc.get("hierarchy"), desc.get('invert', False))
+        return PointCut(dim, desc.get("path"), desc.get("hierarchy"), desc.get("invert", False))
     elif cut_type == "set":
-        return SetCut(dim, desc.get("paths"), desc.get("hierarchy"), desc.get('invert', False))
+        return SetCut(dim, desc.get("paths"), desc.get("hierarchy"), desc.get("invert", False))
     elif cut_type == "range":
-        return RangeCut(dim, desc.get("from"), desc.get("to"),
-                        desc.get("hierarchy"), desc.get('invert', False))
+        return RangeCut(dim, desc.get("from"), desc.get("to"), desc.get("hierarchy"), desc.get("invert", False))
     else:
         raise ArgumentError("Unknown cut type %s" % cut_type)
 
@@ -699,10 +692,11 @@ def string_from_path(path):
     path = [_path_part_escape(compat.to_unicode(s)) for s in path]
 
     if not all(map(RE_ELEMENT.match, path)):
-        get_logger().warn("Can not convert path to string: "
-                          "keys contain invalid characters "
-                          "(should be alpha-numeric or underscore) '%s'" %
-                          path)
+        get_logger().warn(
+            "Can not convert path to string: "
+            "keys contain invalid characters "
+            "(should be alpha-numeric or underscore) '%s'" % path
+        )
 
     string = PATH_STRING_SEPARATOR_CHAR.join(path)
     return string
@@ -734,8 +728,8 @@ def path_from_string(string):
 
 
 class Cut(object):
-    def __init__(self, dimension, hierarchy=None, invert=False,
-                 hidden=False):
+
+    def __init__(self, dimension, hierarchy=None, invert=False, hidden=False):
         """Abstract class for a cell cut."""
         self.dimension = dimension
         self.hierarchy = hierarchy
@@ -748,7 +742,7 @@ class Cut(object):
         d = OrderedDict()
 
         # Placeholder for 'type' to be at the beginning of the list
-        d['type'] = None
+        d["type"] = None
 
         d["dimension"] = str(self.dimension)
         d["hierarchy"] = str(self.hierarchy) if self.hierarchy else None
@@ -771,8 +765,7 @@ class PointCut(Cut):
     """Object describing way of slicing a cube (cell) through point in a
     dimension"""
 
-    def __init__(self, dimension, path, hierarchy=None, invert=False,
-                 hidden=False):
+    def __init__(self, dimension, path, hierarchy=None, invert=False, hidden=False):
         super(PointCut, self).__init__(dimension, hierarchy, invert, hidden)
         self.path = path
 
@@ -817,8 +810,7 @@ class RangeCut(Cut):
     dimension that has ordered points. For dimensions with unordered points
     behaviour is unknown."""
 
-    def __init__(self, dimension, from_path, to_path, hierarchy=None,
-                 invert=False, hidden=False):
+    def __init__(self, dimension, from_path, to_path, hierarchy=None, invert=False, hidden=False):
         super(RangeCut, self).__init__(dimension, hierarchy, invert, hidden)
         self.from_path = from_path
         self.to_path = to_path
@@ -857,8 +849,7 @@ class RangeCut(Cut):
 
         range_str = from_path_str + RANGE_CUT_SEPARATOR_CHAR + to_path_str
         dim_str = string_from_hierarchy(self.dimension, self.hierarchy)
-        string = ("!" if self.invert else "") + dim_str \
-                 + DIMENSION_STRING_SEPARATOR_CHAR + range_str
+        string = ("!" if self.invert else "") + dim_str + DIMENSION_STRING_SEPARATOR_CHAR + range_str
 
         return string
 
@@ -884,8 +875,7 @@ class SetCut(Cut):
     dimension that has ordered points. For dimensions with unordered points
     behaviour is unknown."""
 
-    def __init__(self, dimension, paths, hierarchy=None, invert=False,
-                 hidden=False):
+    def __init__(self, dimension, paths, hierarchy=None, invert=False, hidden=False):
         super(SetCut, self).__init__(dimension, hierarchy, invert, hidden)
         self.paths = paths
 
@@ -910,8 +900,7 @@ class SetCut(Cut):
 
         set_string = SET_CUT_SEPARATOR_CHAR.join(path_strings)
         dim_str = string_from_hierarchy(self.dimension, self.hierarchy)
-        string = ("!" if self.invert else "") + dim_str \
-                 + DIMENSION_STRING_SEPARATOR_CHAR + set_string
+        string = ("!" if self.invert else "") + dim_str + DIMENSION_STRING_SEPARATOR_CHAR + set_string
 
         return string
 
@@ -928,4 +917,3 @@ class SetCut(Cut):
 
     def __ne__(self, other):
         return not self.__eq__(other)
-

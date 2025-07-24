@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
-__all__ = (
-    "Store"
-)
+__all__ = "Store"
 
 
 # Note: this class does not have much use right now besides being discoverable

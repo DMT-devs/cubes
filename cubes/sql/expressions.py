@@ -218,4 +218,3 @@ class SQLExpressionCompiler(Compiler):
     def compile_function(self, context, func, args):
         func = context.function(func.name)
         return func(*args)
-

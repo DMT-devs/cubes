@@ -14,8 +14,8 @@ from . import compat
 
 
 class _DematAccessRight(object):
-    def __init__(self, allowed_cubes=[], denied_cubes=[], cell_restrictions={},
-                 hierarchy_limits=[]):
+
+    def __init__(self, allowed_cubes=[], denied_cubes=[], cell_restrictions={}, hierarchy_limits=[]):
 
         self.cell_restrictions = cell_restrictions or {}
 
@@ -100,42 +100,28 @@ class _DematAccessRight(object):
 
 class DematAuthorizer(Authorizer):
     __options__ = [
-        {
-            "name": "url",
-            "description": "DeMaT OLAP Cubes API base url",
-            "type": "string"
-        },
-        {
-            "name": "ignore_ssl_errors",
-            "description": "Ignore SSL certificate errors",
-            "type": "boolean"
-        },
-        {
-            "name": "authorize_method",
-            "description": "Authorize method name",
-            "type": "string"
-        },
-        {
-            "name": "restricted_cell_method",
-            "description": "Restricted Cell method name",
-            "type": "string"
-        },
-        {
-            "name": "hierarchy_limits_method",
-            "description": "Hierarchy Limits method name",
-            "type": "string"
-        },
+        {"name": "url", "description": "DeMaT OLAP Cubes API base url", "type": "string"},
+        {"name": "ignore_ssl_errors", "description": "Ignore SSL certificate errors", "type": "boolean"},
+        {"name": "authorize_method", "description": "Authorize method name", "type": "string"},
+        {"name": "restricted_cell_method", "description": "Restricted Cell method name", "type": "string"},
+        {"name": "hierarchy_limits_method", "description": "Hierarchy Limits method name", "type": "string"},
         {
             "name": "order",
             "description": "Order of allow/deny",
             "type": "string",
-            "values": ["allow_deny", "deny_allow"]
+            "values": ["allow_deny", "deny_allow"],
         },
     ]
 
     def __init__(
-        self, url=None, ignore_ssl_errors=False, authorize_method='authorize', restricted_cell_method='restricted-cell',
-        hierarchy_limits_method='hierarchy-limits', order=None, **options
+        self,
+        url=None,
+        ignore_ssl_errors=False,
+        authorize_method="authorize",
+        restricted_cell_method="restricted-cell",
+        hierarchy_limits_method="hierarchy-limits",
+        order=None,
+        **options
     ):
         """Creates a Demat based authorizer. Reads data from Demat"""
 
@@ -163,11 +149,11 @@ class DematAuthorizer(Authorizer):
 
     def _rightRequest(self, identity, method, cube=None):
         opener = compat.build_opener()
-        opener.addheaders = [('Authorization', 'Token {token}'.format(token=identity))]
+        opener.addheaders = [("Authorization", "Token {token}".format(token=identity))]
 
-        url = '{url}{method}/'.format(url=self.url, method=method)
+        url = "{url}{method}/".format(url=self.url, method=method)
         if cube:
-            url = '{url}?cube={cube}'.format(url=url, cube=cube)
+            url = "{url}?cube={cube}".format(url=url, cube=cube)
 
         response = opener.open(url)
         reader = codecs.getreader("utf-8")
@@ -176,11 +162,8 @@ class DematAuthorizer(Authorizer):
     def authorize(self, identity, cubes):
         try:
             data = self._rightRequest(identity, self.authorize_method)
-            right = _DematAccessRight(
-                allowed_cubes=data.get('allowed_cubes'),
-                denied_cubes=data.get('denied_cubes')
-            )
-        except:
+            right = _DematAccessRight(allowed_cubes=data.get("allowed_cubes"), denied_cubes=data.get("denied_cubes"))
+        except Exception:
             return []
 
         authorized = []
@@ -195,9 +178,7 @@ class DematAuthorizer(Authorizer):
 
     def restricted_cell(self, identity, cube, cell):
         data = self._rightRequest(identity, self.restricted_cell_method, cube.name)
-        right = _DematAccessRight(
-            cell_restrictions=data.get('cell_restrictions')
-        )
+        right = _DematAccessRight(cell_restrictions=data.get("cell_restrictions"))
 
         cuts = right.cell_restrictions.get(cube.name, [])
 
@@ -227,8 +208,6 @@ class DematAuthorizer(Authorizer):
 
     def hierarchy_limits(self, identity, cube):
         data = self._rightRequest(identity, self.hierarchy_limits_method, cube)
-        right = _DematAccessRight(
-            hierarchy_limits=data.get('hierarchy_limits')
-        )
+        right = _DematAccessRight(hierarchy_limits=data.get("hierarchy_limits"))
 
         return right.hierarchy_limits.get(str(cube), [])

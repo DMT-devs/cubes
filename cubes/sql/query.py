@@ -20,7 +20,21 @@ from __future__ import absolute_import
 import logging
 from collections import namedtuple
 
-from sqlalchemy import Table, Column, MetaData, create_engine, Index, inspect, text, func, select, case, extract, join, exc
+from sqlalchemy import (
+    Table,
+    Column,
+    MetaData,
+    create_engine,
+    Index,
+    inspect,
+    text,
+    func,
+    select,
+    case,
+    extract,
+    join,
+    exc,
+)
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import and_, or_, not_, operators
 
@@ -34,7 +48,7 @@ from .expressions import compile_attributes
 
 
 # Default label for all fact keys
-FACT_KEY_LABEL = '__fact_key__'
+FACT_KEY_LABEL = "__fact_key__"
 
 # Attribute -> Column
 # IF attribute has no 'expression' then mapping is used
@@ -48,8 +62,7 @@ applied on the `column`.
 
 Note that either `extract` or `function` can be used, not both."""
 
-Column = namedtuple("Column", ["schema", "table", "column",
-                               "extract", "function"])
+Column = namedtuple("Column", ["schema", "table", "column", "extract", "function"])
 
 #
 # IMPORTANT: If you decide to extend the above Mapping functionality by adding
@@ -60,6 +73,7 @@ Column = namedtuple("Column", ["schema", "table", "column",
 #
 # See similar comment in the column() method of the StarSchema.
 #
+
 
 def to_column(obj, default_table=None, default_schema=None):
     """Utility function that will create a `Column` reference object from an
@@ -88,8 +102,7 @@ def to_column(obj, default_table=None, default_schema=None):
         elif len(obj) == 3:
             schema, table, column = obj
         else:
-            raise ArgumentError("Join key can have 1 to 3 items"
-                                " has {}: {}".format(len(obj), obj))
+            raise ArgumentError("Join key can have 1 to 3 items" " has {}: {}".format(len(obj), obj))
         extract = None
         function = None
 
@@ -113,10 +126,7 @@ def to_column(obj, default_table=None, default_schema=None):
 
 
 # TODO: remove this and use just Column
-JoinKey = namedtuple("JoinKey",
-                     ["schema",
-                      "table",
-                      "column"])
+JoinKey = namedtuple("JoinKey", ["schema", "table", "column"])
 
 
 def to_join_key(obj):
@@ -135,7 +145,6 @@ def to_join_key(obj):
     .. versionadded:: 1.1
     """
 
-
     if obj is None:
         return JoinKey(None, None, None)
 
@@ -153,8 +162,7 @@ def to_join_key(obj):
         elif len(obj) == 3:
             schema, table, column = obj
         else:
-            raise ArgumentError("Join key can have 1 to 3 items"
-                                " has {}: {}".format(len(obj), obj))
+            raise ArgumentError("Join key can have 1 to 3 items" " has {}: {}".format(len(obj), obj))
 
     elif hasattr(obj, "get"):
         schema = obj.get("schema")
@@ -173,18 +181,21 @@ def to_join_key(obj):
 
     return JoinKey(schema, table, column)
 
+
 """Table join specification. `master` and `detail` are TableColumnReference
 tuples. `method` denotes which table members should be considered in the join:
 *master* – all master members (left outer join), *detail* – all detail members
 (right outer join) and *match* – members must match (inner join)."""
 
-Join = namedtuple("Join",
-                  ["master", # Master table (fact in star schema)
-                   "detail", # Detail table (dimension in star schema)
-                   "alias",  # Optional alias for the detail table
-                   "method"  # Method how the table is joined
-                  ]
-                 )
+Join = namedtuple(
+    "Join",
+    [
+        "master",  # Master table (fact in star schema)
+        "detail",  # Detail table (dimension in star schema)
+        "alias",  # Optional alias for the detail table
+        "method",  # Method how the table is joined
+    ],
+)
 
 
 def to_join(obj):
@@ -203,8 +214,7 @@ def to_join(obj):
         elif len(obj) == 4:
             alias, method = obj[2], obj[3]
         elif len(obj) < 2 or len(obj) > 4:
-            raise ArgumentError("Join object can have 1 to 4 items"
-                                " has {}: {}".format(len(obj), obj))
+            raise ArgumentError("Join object can have 1 to 4 items" " has {}: {}".format(len(obj), obj))
 
         master = to_join_key(obj[0])
         detail = to_join_key(obj[1])
@@ -212,42 +222,41 @@ def to_join(obj):
         return Join(master, detail, alias, method)
 
     elif hasattr(obj, "get"):  # pragma nocover
-        return Join(to_join_key(obj.get("master")),
-                    to_join_key(obj.get("detail")),
-                    obj.get("alias"),
-                    obj.get("method"))
+        return Join(to_join_key(obj.get("master")), to_join_key(obj.get("detail")), obj.get("alias"), obj.get("method"))
 
     else:  # pragma nocover
-        return Join(to_join_key(obj.master),
-                    to_join_key(obj.detail),
-                    obj.alias,
-                    obj.method)
+        return Join(to_join_key(obj.master), to_join_key(obj.detail), obj.alias, obj.method)
 
 
 # Internal table reference
-_TableRef = namedtuple("_TableRef",
-                       ["schema", # Database schema
-                        "name",   # Table name
-                        "alias",  # Optional table alias instead of name
-                        "key",    # Table key (for caching or referencing)
-                        "table",  # SQLAlchemy Table object, reflected
-                        "join"    # join which joins this table as a detail
-                       ]
-                      )
+_TableRef = namedtuple(
+    "_TableRef",
+    [
+        "schema",  # Database schema
+        "name",  # Table name
+        "alias",  # Optional table alias instead of name
+        "key",  # Table key (for caching or referencing)
+        "table",  # SQLAlchemy Table object, reflected
+        "join",  # join which joins this table as a detail
+    ],
+)
 
 
 class SchemaError(InternalError):
     """Error related to the physical star schema."""
+
     pass
 
 
 class NoSuchTableError(SchemaError):
     """Error related to the physical star schema."""
+
     pass
 
 
 class NoSuchAttributeError(SchemaError):
     """Error related to the physical star schema."""
+
     pass
 
 
@@ -331,17 +340,16 @@ class StarSchema(object):
     .. versionadded:: 1.1
     """
 
-    def __init__(self, label, metadata, mappings, fact, fact_key='id',
-                 joins=None, tables=None, schema=None, engine=None):
+    def __init__(
+        self, label, metadata, mappings, fact, fact_key="id", joins=None, tables=None, schema=None, engine=None
+    ):
 
         # TODO: expectation is, that the snowlfake is already localized, the
         # owner of the snowflake should generate one snowflake per locale.
         # TODO: use `facts` instead of `fact`
 
         if fact is None:
-            raise ArgumentError("Fact table or table name not specified "
-                                "for star/snowflake schema {}"
-                                .format(label))
+            raise ArgumentError("Fact table or table name not specified " "for star/snowflake schema {}".format(label))
 
         self.label = label
         self.metadata = metadata
@@ -388,9 +396,10 @@ class StarSchema(object):
             try:
                 self.fact_key_column = list(self.fact_table.columns)[0]
             except Exception as e:
-                raise ModelError("Unable to get key column for fact "
-                                 "table '%s' in '%s'. Reason: %s"
-                                 % (self.fact_name, label, str(e)))
+                raise ModelError(
+                    "Unable to get key column for fact "
+                    "table '%s' in '%s'. Reason: %s" % (self.fact_name, label, str(e))
+                )
             else:
                 self.fact_key = self.fact_key_column.name
 
@@ -416,7 +425,14 @@ class StarSchema(object):
 
         # Collect the fact table as the root master table
         #
-        fact_table = _TableRef(schema=self.schema, name=self.fact_name, alias=self.fact_name, key=(self.schema, self.fact_name), table=self.fact_table, join=None)
+        fact_table = _TableRef(
+            schema=self.schema,
+            name=self.fact_name,
+            alias=self.fact_name,
+            key=(self.schema, self.fact_name),
+            table=self.fact_table,
+            join=None,
+        )
 
         self._tables[fact_table.key] = fact_table
 
@@ -432,13 +448,14 @@ class StarSchema(object):
             # just ask for the table
 
             if not join_for.detail.table:
-                raise ModelError("No detail table specified for a join_for in "
-                                 "schema '{}'. Master of the join_for is '{}'"
-                                 .format(self.label,
-                                         _format_key(self._master_key(join_for))))
+                raise ModelError(
+                    "No detail table specified for a join_for in "
+                    "schema '{}'. Master of the join_for is '{}'".format(
+                        self.label, _format_key(self._master_key(join_for))
+                    )
+                )
 
-            table = self.physical_table(join_for.detail.table,
-                                        join_for.detail.schema)
+            table = self.physical_table(join_for.detail.table, join_for.detail.schema)
 
             if join_for.alias:
                 table = table.alias(join_for.alias)
@@ -449,12 +466,20 @@ class StarSchema(object):
             key = (join_for.detail.schema or self.schema, alias)
 
             if key in details:
-                raise ModelError("Detail table '{}' joined twice in star"
-                                 " schema {}. Join_for alias is required."
-                                 .format(_format_key(key), self.label))
+                raise ModelError(
+                    "Detail table '{}' joined twice in star"
+                    " schema {}. Join_for alias is required.".format(_format_key(key), self.label)
+                )
             details.add(key)
 
-            ref = _TableRef(table=table, schema=join_for.detail.schema, name=join_for.detail.table, alias=alias, key=key, join=join_for)
+            ref = _TableRef(
+                table=table,
+                schema=join_for.detail.schema,
+                name=join_for.detail.table,
+                alias=alias,
+                key=key,
+                join=join_for,
+            )
 
             self._tables[key] = ref
 
@@ -494,8 +519,7 @@ class StarSchema(object):
 
             schema = '"{}".'.format(key[0]) if key[0] else ""
 
-            raise SchemaError("Unknown star table {}\"{}\"{}. Missing join?"
-                              .format(schema, key[1], for_role))
+            raise SchemaError('Unknown star table {}"{}"{}. Missing join?'.format(schema, key[1], for_role))
 
     def physical_table(self, name, schema=None):
         """Return a physical table or table expression, regardless whether it
@@ -510,8 +534,7 @@ class StarSchema(object):
         try:
             table = Table(name, self.metadata, schema=coalesced_schema, autoload_with=self.connectable)
         except exc.NoSuchTableError:
-            in_schema = (" in schema '{}'"
-                         .format(schema)) if schema else ""
+            in_schema = (" in schema '{}'".format(schema)) if schema else ""
             msg = "No such fact table '{}'{}.".format(name, in_schema)
             raise NoSuchTableError(msg)
 
@@ -556,8 +579,7 @@ class StarSchema(object):
             column = table.columns[mapping.column]
         except KeyError:
             avail = ", ".join(str(c) for c in table.columns)
-            raise SchemaError("Unknown column '%s' in table '%s' possible: %s"
-                              % (mapping.column, mapping.table, avail))
+            raise SchemaError("Unknown column '%s' in table '%s' possible: %s" % (mapping.column, mapping.table, avail))
 
         # Extract part of the date
         if mapping.extract:
@@ -573,15 +595,13 @@ class StarSchema(object):
 
     def _master_key(self, join):
         """Generate join master key, use schema defaults"""
-        return (join.master.schema or self.schema,
-                join.master.table or self.fact_name)
+        return (join.master.schema or self.schema, join.master.table or self.fact_name)
 
     def _detail_key(self, join):
         """Generate join detail key, use schema defaults"""
         # Note: we don't include fact as detail table by default. Fact can not
         # be detail (at least for now, we don't have a case where it could be)
-        return (join.detail.schema or self.schema,
-                join.alias or join.detail.table)
+        return (join.detail.schema or self.schema, join.alias or join.detail.table)
 
     def required_tables(self, attributes):
         """Get all tables that are required to be joined to get `attributes`.
@@ -632,9 +652,7 @@ class StarSchema(object):
         sorted_tables = [fact]
 
         while required:
-            details = [table for table in required.values()
-                       if table.join
-                       and self._master_key(table.join) in masters]
+            details = [table for table in required.values() if table.join and self._master_key(table.join) in masters]
 
             if not details:
                 break
@@ -646,12 +664,9 @@ class StarSchema(object):
                 del required[detail.key]
 
         if len(required) > 1:
-            keys = [_format_key(table.key)
-                    for table in required.values()
-                    if table.key != fact_key]
+            keys = [_format_key(table.key) for table in required.values() if table.key != fact_key]
 
-            raise ModelError("Some tables are not joined: {}"
-                             .format(", ".join(keys)))
+            raise ModelError("Some tables are not joined: {}".format(", ".join(keys)))
 
         return sorted_tables
 
@@ -669,10 +684,10 @@ class StarSchema(object):
         .. code-block:: python
 
             star = star_schema.star(attributes)
-            statement = statement(selection,
-                                                 from_obj=star,
-                                                 whereclause=condition)
-            result = engine.execute(statement)
+            statement = select(*selection).select_from(star).where(condition)
+            # SQLAlchemy 2.x pattern:
+            with engine.connect() as conn:
+                result = conn.execute(statement)
         """
 
         attributes = [str(attr) for attr in attributes]
@@ -682,7 +697,7 @@ class StarSchema(object):
         # Dictionary of raw tables and their joined products
         # At the end this should contain only one item representing the whole
         # star.
-        star_tables = {table_ref.key:table_ref.table for table_ref in tables}
+        star_tables = {table_ref.key: table_ref.table for table_ref in tables}
 
         # Here the `star` contains mapping table key -> table, which will be
         # gradually replaced by JOINs
@@ -694,7 +709,7 @@ class StarSchema(object):
         # 2. construct the condition
         # 3. use the appropriate SQL JOIN
         # 4. wrap the star with detail
-        # 
+        #
         # TODO: support MySQL partition (see Issue list)
 
         # First table does not need to be joined. It is the "fact" (or other
@@ -703,8 +718,7 @@ class StarSchema(object):
 
         for table in tables[1:]:
             if not table.join:
-                raise ModelError("Missing join for table '{}'"
-                                 .format(_format_key(table.key)))
+                raise ModelError("Missing join for table '{}'".format(_format_key(table.key)))
 
             join_table = table.join
 
@@ -726,40 +740,37 @@ class StarSchema(object):
             master_table = self.table(master_key).table
 
             try:
-                master_columns = _make_compound_key(master_table,
-                                                    master.column)
+                master_columns = _make_compound_key(master_table, master.column)
             except KeyError as e:
-                raise ModelError('Unable to find master key column "{key}" '
-                                 'in table "{table}" for star {schema} '
-                                 .format(schema=self.label,
-                                         key=e,
-                                         table=_format_key(master_key)))
+                raise ModelError(
+                    'Unable to find master key column "{key}" '
+                    'in table "{table}" for star {schema} '.format(
+                        schema=self.label, key=e, table=_format_key(master_key)
+                    )
+                )
 
             # Detail table.column
             # -------------------
             try:
-                detail_columns = _make_compound_key(detail_table,
-                                                    join_table.detail.column)
+                detail_columns = _make_compound_key(detail_table, join_table.detail.column)
             except KeyError as e:
-                raise ModelError('Unable to find detail key column "{key}" '
-                                 'in table "{table}" for star {schema} '
-                                 .format(schema=self.label,
-                                         key=e,
-                                         table=_format_key(detail_key)))
+                raise ModelError(
+                    'Unable to find detail key column "{key}" '
+                    'in table "{table}" for star {schema} '.format(
+                        schema=self.label, key=e, table=_format_key(detail_key)
+                    )
+                )
 
             if len(master_columns) != len(detail_columns):
-                raise ModelError("Compound keys for master '{}' and detail "
-                                 "'{}' table in star {} have different number"
-                                 " of columns"
-                                 .format(_format_key(master_key),
-                                         _format_key(detail_key),
-                                         self.label))
+                raise ModelError(
+                    "Compound keys for master '{}' and detail "
+                    "'{}' table in star {} have different number"
+                    " of columns".format(_format_key(master_key), _format_key(detail_key), self.label)
+                )
 
             # The JOIN ON condition
             # ---------------------
-            key_conditions = [left == right
-                              for left, right
-                              in zip(master_columns, detail_columns)]
+            key_conditions = [left == right for left, right in zip(master_columns, detail_columns)]
             onclause = and_(*key_conditions)
 
             # Determine the join type based on the join method. If the method
@@ -783,8 +794,7 @@ class StarSchema(object):
 
             # Consume the detail
             if detail_key not in star_tables:
-                raise ModelError("Detail table '{}' not in star. Missing join?"
-                                 .format(_format_key(detail_key)))
+                raise ModelError("Detail table '{}' not in star. Missing join?".format(_format_key(detail_key)))
 
             # The table is consumed by the join product, becomes the join
             # product itself.
@@ -809,8 +819,7 @@ class QueryContext(object):
     .. versionadded:: 1.1
     """
 
-    def __init__(self, star_schema, attributes, hierarchies=None,
-                 parameters=None, safe_labels=None):
+    def __init__(self, star_schema, attributes, hierarchies=None, parameters=None, safe_labels=None):
         """Creates a query context for `cube`.
 
         * `attributes` – list of all attributes that are relevant to the
@@ -858,11 +867,10 @@ class QueryContext(object):
 
         # Collect all the columns
         #
-        bases = {attr:self.star_schema.column(attr) for attr in base_names}
+        bases = {attr: self.star_schema.column(attr) for attr in base_names}
         bases[FACT_KEY_LABEL] = self.star_schema.fact_key_column
 
-        self._columns = compile_attributes(bases, dependants, parameters,
-                                           star_schema.label)
+        self._columns = compile_attributes(bases, dependants, parameters, star_schema.label)
 
         self.label_attributes = {}
         if self.safe_labels:
@@ -895,9 +903,11 @@ class QueryContext(object):
             # This should not happen under normal circumstances. If this
             # exception is raised, it very likely means that the owner of the
             # query contexts forgot to do something.
-            raise InternalError("Missing column '{}'. Query context not "
-                                "properly initialized or dependencies were "
-                                "not correctly ordered?".format(ref))
+            raise InternalError(
+                "Missing column '{}'. Query context not "
+                "properly initialized or dependencies were "
+                "not correctly ordered?".format(ref)
+            )
 
     def get_labels(self, columns):
         """Returns real attribute labels for columns `columns`. It is highly
@@ -905,13 +915,12 @@ class QueryContext(object):
         iterating over statement result."""
 
         if self.safe_labels:
-            return [self.label_attributes.get(column.name, column.name)
-                    for column in columns]
+            return [self.label_attributes.get(column.name, column.name) for column in columns]
         else:
             return [col.name for col in columns]
 
     def get_columns(self, refs):
-        """Get columns for attribute references `refs`.  """
+        """Get columns for attribute references `refs`."""
 
         return [self._columns[ref] for ref in refs]
 
@@ -938,18 +947,13 @@ class QueryContext(object):
 
             if isinstance(cut, PointCut):
                 path = cut.path
-                condition = self.condition_for_point(str(cut.dimension),
-                                                     path,
-                                                     hierarchy, cut.invert)
+                condition = self.condition_for_point(str(cut.dimension), path, hierarchy, cut.invert)
 
             elif isinstance(cut, SetCut):
                 set_conds = []
 
                 for path in cut.paths:
-                    condition = self.condition_for_point(str(cut.dimension),
-                                                         path,
-                                                         str(cut.hierarchy),
-                                                         invert=False)
+                    condition = self.condition_for_point(str(cut.dimension), path, str(cut.hierarchy), invert=False)
                     set_conds.append(condition)
 
                 condition = or_(*set_conds)
@@ -958,10 +962,7 @@ class QueryContext(object):
                     condition = not_(condition)
 
             elif isinstance(cut, RangeCut):
-                condition = self.range_condition(str(cut.dimension),
-                                                 hierarchy,
-                                                 cut.from_path,
-                                                 cut.to_path, cut.invert)
+                condition = self.range_condition(str(cut.dimension), hierarchy, cut.from_path, cut.to_path, cut.invert)
 
             else:
                 raise ArgumentError("Unknown cut type %s" % type(cut))
@@ -993,8 +994,7 @@ class QueryContext(object):
 
         return condition
 
-    def range_condition(self, dim, hierarchy, from_path, to_path,
-                        invert=False):
+    def range_condition(self, dim, hierarchy, from_path, to_path, invert=False):
         """Return a condition for a hierarchical range (`from_path`,
         `to_path`). Return value is a `Condition` tuple."""
 
@@ -1024,8 +1024,7 @@ class QueryContext(object):
         if not path:
             return None
 
-        last = self._boundary_condition(dim, hierarchy, path[:-1], bound,
-                                        first=False)
+        last = self._boundary_condition(dim, hierarchy, path[:-1], bound, first=False)
 
         levels = self.level_keys(dim, hierarchy, path)
 
@@ -1064,16 +1063,17 @@ class QueryContext(object):
         try:
             levels = self.hierarchies[(str(dimension), hierarchy)]
         except KeyError as e:
-            raise InternalError("Unknown hierarchy '{}'. Hierarchies are "
-                                "not properly initialized (maybe missing "
-                                "default?)".format(e))
+            raise InternalError(
+                "Unknown hierarchy '{}'. Hierarchies are "
+                "not properly initialized (maybe missing "
+                "default?)".format(e)
+            )
 
         depth = 0 if not path else len(path)
 
         if depth > len(levels):
             levels_str = ", ".join(levels)
-            raise HierarchyError("Path '{}' is longer than hierarchy. "
-                                 "Levels: {}".format(path, levels))
+            raise HierarchyError("Path '{}' is longer than hierarchy. " "Levels: {}".format(path, levels))
 
         return levels[0:depth]
 
@@ -1085,4 +1085,3 @@ class QueryContext(object):
 
         label = label or SPLIT_DIMENSION_NAME
         return split_column.label(label)
-

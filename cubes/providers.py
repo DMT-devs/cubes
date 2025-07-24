@@ -24,10 +24,10 @@ __all__ = [
 #
 # Provider is bound to namespace
 
+
 # TODO: add tests
 # TODO: needs to be reviewed
-def link_cube(cube, locale, provider=None, namespace=None,
-              ignore_missing=False):
+def link_cube(cube, locale, provider=None, namespace=None, ignore_missing=False):
     """Links dimensions to the `cube` in the `context` object. The `context`
     object should implement a function `dimension(name, locale, namespace,
     provider)`. Modifies cube in place, returns the cube.
@@ -40,13 +40,10 @@ def link_cube(cube, locale, provider=None, namespace=None,
 
     for dim_name in cube.dimension_links.keys():
         if dim_name in linked:
-            raise ModelError("Dimension '{}' linked twice"
-                             .format(dim_name))
+            raise ModelError("Dimension '{}' linked twice".format(dim_name))
 
         try:
-            dim = find_dimension(dim_name, locale,
-                                 provider=provider,
-                                 namespace=namespace)
+            dim = find_dimension(dim_name, locale, provider=provider, namespace=namespace)
 
         except TemplateRequired as e:
             raise ModelError("Dimension template '%s' missing" % dim_name)
@@ -91,21 +88,19 @@ def find_dimension(name, locale=None, provider=None, namespace=None):
         required_template = None
 
         try:
-            dimension = _lookup_dimension(name, templates,
-                                          namespace, provider)
+            dimension = _lookup_dimension(name, templates, namespace, provider)
         except TemplateRequired as e:
             required_template = e.template
 
         if required_template in templates:
-            raise BackendError("Some model provider didn't make use of "
-                               "dimension template '%s' for '%s'"
-                               % (required_template, name))
+            raise BackendError(
+                "Some model provider didn't make use of " "dimension template '%s' for '%s'" % (required_template, name)
+            )
 
         if required_template:
             missing.append(name)
             if required_template in missing:
-                raise ModelError("Dimension templates cycle in '%s'" %
-                                 required_template)
+                raise ModelError("Dimension templates cycle in '%s'" % required_template)
             missing.append(required_template)
 
         # Store the created dimension to be used as template
@@ -147,8 +142,7 @@ def _lookup_dimension(name, templates, namespace, provider):
     if namespace:
         return namespace.dimension(name, templates=templates)
 
-    raise NoSuchDimensionError("Dimension '%s' not found" % name,
-                               name=name)
+    raise NoSuchDimensionError("Dimension '%s' not found" % name, name=name)
 
 
 class ModelProvider(object):
@@ -206,7 +200,7 @@ class ModelProvider(object):
         if dims:
             metadata["dimensions"] = dims
 
-        joins = metadata.pop("joins", []) + other.pop("joins",[])
+        joins = metadata.pop("joins", []) + other.pop("joins", [])
         if joins:
             metadata["joins"] = joins
 
@@ -245,7 +239,7 @@ class ModelProvider(object):
     # TODO: bind this automatically on provider configuration: store (see
     # requires_store() function)
     def bind(self, store):
-        """Set's the provider's `store`. """
+        """Set's the provider's `store`."""
 
         self.store = store
         self.initialize_from_store()
@@ -303,10 +297,10 @@ class ModelProvider(object):
             raise NoSuchCubeError("No such cube '%s'" % name, name)
 
         # merge browser_options
-        browser_options = self.metadata.get('browser_options', {})
-        if metadata.get('browser_options'):
-            browser_options.update(metadata.get('browser_options'))
-        metadata['browser_options'] = browser_options
+        browser_options = self.metadata.get("browser_options", {})
+        if metadata.get("browser_options"):
+            browser_options.update(metadata.get("browser_options"))
+        metadata["browser_options"] = browser_options
 
         # Merge model and cube mappings
         #
@@ -332,14 +326,12 @@ class ModelProvider(object):
             model_join_map = {}
             for join in model_joins:
                 try:
-                    jname = join['name']
+                    jname = join["name"]
                 except KeyError:
-                    raise ModelError("Missing required 'name' key in "
-                                     "model-level joins.")
+                    raise ModelError("Missing required 'name' key in " "model-level joins.")
 
                 if jname in model_join_map:
-                    raise ModelError("Duplicate model-level join 'name': %s" %
-                                     jname)
+                    raise ModelError("Duplicate model-level join 'name': %s" % jname)
 
                 model_join_map[jname] = copy.deepcopy(join)
 
@@ -347,7 +339,7 @@ class ModelProvider(object):
             merged_joins = []
 
             for join in cube_joins:
-                name = join.get('name')
+                name = join.get("name")
                 if name and name in model_join_map:
                     model_join = dict(model_join_map[name])
                 else:
@@ -361,11 +353,9 @@ class ModelProvider(object):
         # Validate joins:
         for join in merged_joins:
             if "master" not in join:
-                raise ModelError("No master in join for cube '%s' "
-                                 "(join name: %s)" % (name, join.get("name")))
+                raise ModelError("No master in join for cube '%s' " "(join name: %s)" % (name, join.get("name")))
             if "detail" not in join:
-                raise ModelError("No detail in join for cube '%s' "
-                                 "(join name: %s)" % (name, join.get("name")))
+                raise ModelError("No detail in join for cube '%s' " "(join name: %s)" % (name, join.get("name")))
 
         metadata["joins"] = merged_joins
 
@@ -444,9 +434,8 @@ class StaticModelProvider(ModelProvider):
                 "name": cube["name"],
                 "label": cube.get("label", cube["name"]),
                 "category": (cube.get("category") or cube.get("info", {}).get("category")),
-                "info": cube.get("info", {})
+                "info": cube.get("info", {}),
             }
             cubes.append(info)
 
         return cubes
-
