@@ -12,7 +12,7 @@ Basic Installation
 The cubes has optional requirements:
 
 * `SQLAlchemy`_ for SQL database aggregation browsing backend (version >=
-  0.7.4)
+  2.0)
 * `Flask`_ for Slicer OLAP HTTP server
 
 .. note::
