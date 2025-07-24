@@ -565,7 +565,7 @@ def cut_from_string(string, cube=None, member_converters=None, role_member_conve
     member_converters = member_converters or {}
     role_member_converters = role_member_converters or {}
 
-    dim_hier_pattern = re.compile(r"(?P<invert>!)?" "(?P<dim>\w+)(@(?P<hier>\w+))?")
+    dim_hier_pattern = re.compile(r"(?P<invert>!)?(?P<dim>\w+)(@(?P<hier>\w+))?")
 
     try:
         (dimspec, string) = DIMENSION_STRING_SEPARATOR.split(string)

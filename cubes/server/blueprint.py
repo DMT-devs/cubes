@@ -16,7 +16,7 @@ from .logging import configured_request_log_handlers, RequestLogger
 from .logging import AsyncRequestLogger
 from .errors import NotAuthenticatedError, PageNotFoundError, RequestError, server_error_codes, NotFoundError
 from .decorators import requires_cube, requires_browser, log_request, prepare_cell
-from .local import logger
+from .local import logger, workspace
 from .auth import NotAuthenticated
 from .utils import validated_parameter, jsonify, str_to_bool, CustomDict, formatted_response
 

@@ -54,7 +54,7 @@ SQL_AGGREGATE_FUNCTIONS = [
     "sum", "min", "max", "avg", "stddev", "variance", "count"
 ]
 
-SQL_ALL_FUNCTIONS = SQL_FUNCTIONS + SQL_AGGREGATE_FUNCTIONS;
+SQL_ALL_FUNCTIONS = SQL_FUNCTIONS + SQL_AGGREGATE_FUNCTIONS
 
 SQL_VARIABLES = [
     "current_date", "current_time", "local_date", "local_time"

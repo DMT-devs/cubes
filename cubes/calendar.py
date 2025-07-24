@@ -45,10 +45,10 @@ _DATEUTIL_WEEKDAYS = {0: MO, 1: TU, 2: WE, 3: TH, 4: FR, 5: SA, 6: SU}
 
 _WEEKDAY_NUMBERS = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6}
 
-RELATIVE_FINE_TIME_RX = re.compile(r"(?P<offset>\d+)?" "(?P<unit>\w+)" "(?P<direction>(ago|forward))")
+RELATIVE_FINE_TIME_RX = re.compile(r"(?P<offset>\d+)?(?P<unit>\w+)(?P<direction>(ago|forward))")
 
 
-RELATIVE_TRUNCATED_TIME_RX = re.compile(r"(?P<direction>(last|next))" "(?P<offset>\d+)?" "(?P<unit>\w+)")
+RELATIVE_TRUNCATED_TIME_RX = re.compile(r"(?P<direction>(last|next))(?P<offset>\d+)?(?P<unit>\w+)")
 
 
 def month_to_quarter(month):
