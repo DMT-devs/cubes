@@ -1,5 +1,8 @@
+sqlalchemy
 python-dateutil
 jsonschema
 expressions
 grako
 click
+flask
+flask-compress
