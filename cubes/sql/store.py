@@ -154,10 +154,9 @@ class SQLStore(Store):
         if not engine:
             # Process SQLAlchemy options
             sa_options = sqlalchemy_options(options)
-            # TODO Maria
-            # backend = self._get_backend_from_config()
-            # if backend == "postgresql":
-            #     sa_options["connect_args"] = {"options": "-c timezone=Europe/Europe"}
+            backend = self._get_backend_from_config()
+            if backend == "postgresql":
+                sa_options["connect_args"] = {"options": "-c timezone=Europe/Europe"}
             sa_options["future"] = True
             engine = create_engine(url, **sa_options)
 

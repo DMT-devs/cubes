@@ -21,7 +21,6 @@ from .metadata import expand_cube_metadata, expand_dimension_links
 from .metadata import expand_dimension_metadata, expand_level_metadata
 from . import compat
 
-
 __all__ = [
     "ModelObject",
     "Cube",
@@ -667,6 +666,7 @@ class Cube(ModelObject):
     def dimensions(self):
         return list(self._dimensions.values())
 
+
     def dimension(self, obj):
         """Get dimension object. If `obj` is a string, then dimension with
         given name is returned, otherwise dimension object is returned if it
@@ -1138,6 +1138,7 @@ class Dimension(Conceptual):
         self._attributes = OrderedDict()
         self._attributes_by_ref = OrderedDict()
         self._attributes = OrderedDict()
+
         for level in self.levels:
             for a in level.attributes:
                 # Own the attribute
@@ -1173,7 +1174,7 @@ class Dimension(Conceptual):
         self.default_hierarchy_name = hierarchy.name
 
     def __eq__(self, other):
-        if other is None or not isinstance(other, self):
+        if other is None or not isinstance(other, type(self)):
             return False
 
         cond = (
@@ -1243,6 +1244,7 @@ class Dimension(Conceptual):
             return obj
         else:
             raise ValueError("Unknown level object %s (should be a string " "or Level)" % obj)
+
 
     def hierarchy(self, obj=None):
         """Get hierarchy object either by name or as `Hierarchy`. If `obj` is
@@ -1630,6 +1632,7 @@ class Hierarchy(Conceptual):
     def levels(self):
         return list(self._levels.values())
 
+
     @levels.setter
     def levels(self, levels):
         self._levels.clear()
@@ -1958,7 +1961,7 @@ class Level(ModelObject):
         self.cardinality = cardinality
 
     def __eq__(self, other):
-        if not other or not isinstance(other, self):
+        if not other or not isinstance(other, type(self)):
             return False
         elif (
             self.name != other.name
