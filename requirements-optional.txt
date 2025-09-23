@@ -1,3 +1,4 @@
 pymongo
 werkzeug
 jinja2
+Flask-Compress
