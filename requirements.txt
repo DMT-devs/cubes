@@ -5,4 +5,3 @@ expressions
 grako
 click
 flask
-Flask-Compress
