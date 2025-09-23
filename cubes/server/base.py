@@ -3,7 +3,11 @@
 from __future__ import absolute_import
 from .blueprint import slicer
 from flask import Flask, request
-from flask_compress import Compress
+try:
+    from flask_compress import Compress
+    compress_available = True
+except ImportError:
+    compress_available = False
 import shlex
 import os
 
@@ -49,7 +53,8 @@ def create_server(config=None, **_options):
             __import__(module)
 
     app = Flask(__name__.rsplit(".", 1)[0])
-    Compress(app)
+    if compress_available:
+        Compress(app)
 
     @app.before_request
     def intercept_request():
