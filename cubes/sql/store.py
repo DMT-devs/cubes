@@ -156,7 +156,7 @@ class SQLStore(Store):
             sa_options = sqlalchemy_options(options)
             backend = self._get_backend_from_config()
             if backend == "postgresql":
-                sa_options["connect_args"] = {"options": "-c timezone=Europe/Europe"}
+                sa_options["connect_args"] = {"options": "-c timezone=Europe/Paris"}
             sa_options["future"] = True
             engine = create_engine(url, **sa_options)
 
