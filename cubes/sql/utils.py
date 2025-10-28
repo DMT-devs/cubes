@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 """Cubes SQL backend utilities, mostly to be used by the slicer command."""
 
-from sqlalchemy import text
+from sqlalchemy import text, select
 from sqlalchemy.sql.expression import Executable, ClauseElement
 from sqlalchemy.ext.compiler import compiles
 import sqlalchemy.sql as sql
