@@ -196,17 +196,12 @@ def apply_permissions_to_statement(sql_browser, statement, permissions_cell):
         permission_condition = permission_context.condition_for_cell(
             permissions_cell
         )
-        permission_subquery = sql.expression.subquery(
-            "allowed_records",
-            columns=permission_selection,
-            from_obj=permission_context.star,
-            whereclause=permission_condition,
-            use_labels=True,
-            distinct=True
+        permission_subquery = (
+            select(*permission_selection)
+            .select_from(permission_context.star)
+            .where(permission_condition)
+            .distinct()
+            .subquery("allowed_records")
         )
-        fact_pk = "{}.{}".format(
-            permissions_cell.cube.fact, permissions_cell.cube.key
-        )
-        statement.append_whereclause(
-            text(fact_pk) == permission_subquery.c.__fact_key__
-        )
+        fact_pk = "{}.{}".format(permissions_cell.cube.fact, permissions_cell.cube.key)
+        statement.where(text(fact_pk) == permission_subquery.c.__fact_key__)
