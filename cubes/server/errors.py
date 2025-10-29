@@ -24,7 +24,7 @@ class ServerError(HTTPException):
         self.details = details
         self.help = None
 
-    def get_body(self, environ):
+    def get_body(self, environ, *args):
         error = {"message": self.message, "type": self.__class__.error_type}
 
         if self.exception:
@@ -36,7 +36,7 @@ class ServerError(HTTPException):
         string = json.dumps({"error": error}, indent=4)
         return string
 
-    def get_headers(self, environ):
+    def get_headers(self, environ, *args):
         """Get a list of headers."""
         return [("Content-Type", "application/json")]
 
