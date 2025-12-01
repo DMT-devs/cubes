@@ -499,7 +499,7 @@ class SQLBrowser(AggregationBrowser):
 
         statement = select(*selection).select_from(context.star).where(cell_condition)
 
-        apply_permissions_to_statement(self, statement, permissions_cell)
+        statement = apply_permissions_to_statement(self, statement, permissions_cell)
 
         return (statement, context.get_labels(statement.columns))
 
@@ -594,7 +594,7 @@ class SQLBrowser(AggregationBrowser):
         if group_by is not None:
             statement = statement.group_by(*group_by)
 
-        apply_permissions_to_statement(self, statement, permissions_cell)
+        statement = apply_permissions_to_statement(self, statement, permissions_cell)
 
         return (statement, context.get_labels(statement.columns))
 

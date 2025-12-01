@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 """Cubes SQL backend utilities, mostly to be used by the slicer command."""
 
-from sqlalchemy import text, select
+from sqlalchemy import select
 from sqlalchemy.sql.expression import Executable, ClauseElement
 from sqlalchemy.ext.compiler import compiles
 import sqlalchemy.sql as sql
@@ -193,9 +193,7 @@ def apply_permissions_to_statement(sql_browser, statement, permissions_cell):
         )
         permission_context = sql_browser._create_context(permission_attributes)
         permission_selection = [sql_browser.star.fact_key_column]
-        permission_condition = permission_context.condition_for_cell(
-            permissions_cell
-        )
+        permission_condition = permission_context.condition_for_cell(permissions_cell)
         permission_subquery = (
             select(*permission_selection)
             .select_from(permission_context.star)
@@ -203,5 +201,6 @@ def apply_permissions_to_statement(sql_browser, statement, permissions_cell):
             .distinct()
             .subquery("allowed_records")
         )
-        fact_pk = "{}.{}".format(permissions_cell.cube.fact, permissions_cell.cube.key)
-        statement.where(text(fact_pk) == permission_subquery.c.__fact_key__)
+        fact_column = sql_browser.star.fact_table.c[permissions_cell.cube.key]
+        statement = statement.where(fact_column == permission_subquery.c.__fact_key__)
+    return statement
