@@ -12,7 +12,7 @@ extras = {
 
 setup(
     name="cubes",
-    version="2.0",
+    version="2.0.1",
     # Project uses reStructuredText, so ensure that the docutils get
     # installed or upgraded on the target machine
     install_requires=requirements,
