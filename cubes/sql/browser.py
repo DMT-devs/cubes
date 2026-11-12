@@ -3,6 +3,7 @@
 
 from __future__ import absolute_import
 import collections
+import time
 
 try:
     import sqlalchemy
@@ -18,6 +19,7 @@ from ..statutils import available_calculators
 from ..browser import AggregationBrowser, AggregationResult, Drilldown
 from ..logging import get_logger
 from ..errors import ArgumentError, InternalError
+from ..common import coalesce_option_value
 from ..stores import Store
 from ..cells import Cell, PointCut
 from ..model import collect_attributes
@@ -34,6 +36,10 @@ from .utils import (
     order_query,
 )
 
+
+# SQLSTATE raised by PostgreSQL when a statement is cancelled, including by
+# statement_timeout
+QUERY_CANCELED_PGCODE = "57014"
 
 __all__ = [
     "SQLBrowser",
@@ -68,6 +74,12 @@ class SQLBrowser(AggregationBrowser):
       performance reasons
     * `safe_labels` – safe labelling of the attributes in databases which
       don't allow characters such as ``.`` dots in column names
+    * `slow_query_retry_timeout` – number of seconds a statement may run
+      before it is cancelled and executed again with nested loop joins
+      disabled. PostgreSQL only. Turned off by default (``0``).
+    * `query_timeout` – maximum number of seconds a statement may run. When
+      `slow_query_retry_timeout` is set it limits the retry, otherwise the
+      statement itself. PostgreSQL only. Turned off by default (``0``).
 
     Limitations:
 
@@ -93,6 +105,17 @@ class SQLBrowser(AggregationBrowser):
             "name": "safe_labels",
             "description": "Use internally SQL statement column labels " "without special characters",
             "type": "bool",
+        },
+        {
+            "name": "slow_query_retry_timeout",
+            "description": "Seconds before a statement is cancelled and retried "
+            "without nested loop joins (PostgreSQL only, 0 disables it)",
+            "type": "int",
+        },
+        {
+            "name": "query_timeout",
+            "description": "Maximum seconds a statement may run (PostgreSQL only, 0 disables it)",
+            "type": "int",
         },
     ]
 
@@ -129,8 +152,22 @@ class SQLBrowser(AggregationBrowser):
         options.update(store.options)
         options.update(kwargs)
 
-        self.include_summary = options.get("include_summary", True)
-        self.include_cell_count = options.get("include_cell_count", True)
+        # Values coming from slicer.ini are strings: "no" must not be truthy
+        self.include_summary = coalesce_option_value(options.get("include_summary", True), "bool")
+        self.include_cell_count = coalesce_option_value(options.get("include_cell_count", True), "bool")
+
+        # Seconds to wait before retrying a statement with nested loop joins
+        # disabled. The planner occasionally picks a nested loop over a large
+        # join because of a wrong row estimate; the retry bounds that case.
+        retry_timeout = int(options.get("slow_query_retry_timeout") or 0)
+        dialect = getattr(self.connectable, "dialect", None)
+        is_postgresql = getattr(dialect, "name", None) == "postgresql"
+        self.slow_query_retry_timeout = retry_timeout if is_postgresql else 0
+
+        # Upper bound for a statement, so an abandoned request can not keep
+        # the database busy.
+        query_timeout = int(options.get("query_timeout") or 0)
+        self.query_timeout = query_timeout if is_postgresql else 0
 
         self.safe_labels = options.get("safe_labels", False)
         if self.safe_labels:
@@ -348,8 +385,41 @@ class SQLBrowser(AggregationBrowser):
         """Execute the `statement`, optionally log it. Returns the result
         cursor."""
         self._log_statement(statement, label)
+        started = time.time()
+        retried = False
+
         with self.connectable.connect() as conn:
-            return conn.execute(statement)
+            first_timeout = self.slow_query_retry_timeout or self.query_timeout
+            if first_timeout:
+                self._set_statement_timeout(conn, first_timeout)
+
+            try:
+                result = conn.execute(statement)
+            except sqlalchemy.exc.OperationalError as error:
+                is_timeout = getattr(error.orig, "pgcode", None) == QUERY_CANCELED_PGCODE
+                if not (self.slow_query_retry_timeout and is_timeout):
+                    raise
+
+                # The rollback also discards the transaction-local timeout
+                conn.rollback()
+                retried = True
+                self.logger.warning(
+                    "statement '%s' on cube '%s' exceeded %ds, retrying without nested loops"
+                    % (label or "unlabeled", self.cube.name, self.slow_query_retry_timeout)
+                )
+                conn.execute(sqlalchemy.text("SET LOCAL enable_nestloop = off"))
+                if self.query_timeout:
+                    self._set_statement_timeout(conn, self.query_timeout)
+                result = conn.execute(statement)
+
+        self.logger.info(
+            "statement '%s' on cube '%s' took %.3fs%s"
+            % (label or "unlabeled", self.cube.name, time.time() - started, " (retried)" if retried else "")
+        )
+        return result
+
+    def _set_statement_timeout(self, conn, seconds):
+        conn.execute(sqlalchemy.text("SET LOCAL statement_timeout = %d" % (seconds * 1000)))
 
     def provide_aggregate(self, cell, aggregates, drilldown, split, order, page, page_size, **options):
         """Return aggregated result.

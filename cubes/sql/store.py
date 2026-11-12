@@ -52,7 +52,13 @@ OPTION_TYPES = {
     "include_cell_count": "bool",
     "use_denormalization": "bool",
     "safe_labels": "bool",
+    "slow_query_retry_timeout": "int",
+    "query_timeout": "int",
 }
+
+# Session options always sent to PostgreSQL. Options given in the store URL
+# are appended, so they take precedence.
+POSTGRESQL_DEFAULT_OPTIONS = "-c timezone=Europe/Paris"
 
 
 def sqlalchemy_options(options, prefix="sqlalchemy_"):
@@ -156,7 +162,9 @@ class SQLStore(Store):
             sa_options = sqlalchemy_options(options)
             backend = self._get_backend_from_config()
             if backend == "postgresql":
-                sa_options["connect_args"] = {"options": "-c timezone=Europe/Paris"}
+                url_options = make_url(url).query.get("options")
+                session_options = " ".join(filter(None, [POSTGRESQL_DEFAULT_OPTIONS, url_options]))
+                sa_options["connect_args"] = {"options": session_options}
             sa_options["future"] = True
             engine = create_engine(url, **sa_options)
 
