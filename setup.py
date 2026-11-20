@@ -3,9 +3,9 @@ from setuptools import setup, find_packages
 requirements = ["python-dateutil", "jsonschema", "expressions>=0.2.3"]
 
 extras = {
-    "sql": "sqlalchemy>= 2.0",
-    "slicer": "werkzeug",
-    "html": "jinja",
+    "sql": ["sqlalchemy>= 2.0"],
+    "slicer": ["werkzeug"],
+    "html": ["jinja"],
     "all": ["cubes[%s]" % extra for extra in ["sql", "slicer", "html"]],
     "dev": ["cubes[all]", "sphinx"],
 }
